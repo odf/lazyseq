@@ -37,7 +37,7 @@ class Seq
       @rest  = lambda { Seq.new elems[1], &rest }
     else
       @first = elems[0]
-      @rest  = lambda { elems[1..-2].to_seq.before Seq.new(elems[-1], &rest) }
+      @rest  = lambda { elems[1..-2].to_seq.concat Seq.new(elems[-1], &rest) }
     end
   end
 
@@ -161,9 +161,10 @@ class Seq
 
   def select(&pred)
     if pred.call first
-      Seq.new(first) { rest.select &pred }
+      Seq.new(first) { rest.select &pred if rest }
     elsif rest
-      rest.drop_until(&pred).select &pred
+      r = rest.drop_until &pred
+      r.select &pred if r
     end
   end
 
@@ -212,7 +213,7 @@ class Seq
 
   def zip_seq
     firsts = map { |s| s.first if s }
-    if firsts.find { |x| not x.nil? }
+    unless firsts.forall &:nil?
       Seq.new(firsts) { map { |s| s.rest if s }.zip_seq }
     end
   end
@@ -243,25 +244,29 @@ class Seq
 
   def ==(*others)
     zip(*others).forall do |seq|
-      if seq and seq.rest
-        x = seq.first
-        seq.rest.forall { |y| y == x }
-      else
-        true
-      end
+      if seq then seq.forall { |x| x == seq.first } else true end
     end
   end
 
-  def before(seq)
-    Seq.new(first) { if rest then rest.before seq else seq end }
+  def lazy_concat(&seq)
+    Seq.new(first) { if rest then rest.lazy_concat(&seq) else seq.call end }
   end
 
   def concat_seq
-    if rest then first.before rest.concat_seq else first end
+    if rest then first.lazy_concat { rest.concat_seq } else first end
   end
 
   def concat(*others)
     sequentialize_with(*others).concat_seq
+  end
+
+  def interleave_seq
+    alive = select { |seq| not seq.nil? }
+    alive.map(&:first).lazy_concat { alive.map(&:rest).interleave_seq } if alive
+  end
+
+  def interleave(*others)
+    sequentialize_with(*others).interleave_seq
   end
 
   def subseqs
@@ -320,6 +325,7 @@ if __FILE__ == $0
   puts "Prime numbers: #{primes.take(10)}"
   puts
   puts "Concatenation: #{seq.take(3).concat(fib.take(2), primes.take(3))}"
+  puts "Interleave:    #{seq.take(3).interleave(fib.take(2), primes.take(3))}"
   puts
   puts "No first:      #{Seq.new() { seq }}"
   puts "One first:     #{Seq.new(1) { seq }}"
