@@ -281,6 +281,18 @@ class Seq
     sequentialize_with(*others).interleave_seq
   end
 
+  def cartesian_seq
+    if rest
+      first.flat_map { |s| rest.cartesian_seq.map { |t| Seq.new(s) { t } } }
+    else
+      first.map { |s| Seq.new(s) { nil } }
+    end
+  end
+
+  def cartesian(*others)
+    sequentialize_with(*others).cartesian_seq
+  end
+
   def subseqs
     Seq.new(self) { rest.subseqs if rest }
   end
@@ -339,6 +351,7 @@ if __FILE__ == $0
   puts
   puts "Concatenation: #{seq.take(3).concat(fib.take(2), primes.take(3))}"
   puts "Interleave:    #{seq.take(3).interleave(fib.take(2), primes.take(3))}"
+  puts "Cartesian:     #{fib.take(2).cartesian(primes.take(2), [0]).map &:to_a}"
   puts
   puts "No first:      #{Seq.new() { seq }}"
   puts "One first:     #{Seq.new(1) { seq }}"
