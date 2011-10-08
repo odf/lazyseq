@@ -67,6 +67,10 @@ class Seq
     bounce step.call(self)
   end
 
+  def to_seq
+    self
+  end
+
   def to_a
     array = []
     each { |x| array.push x }
@@ -151,7 +155,7 @@ class Seq
   end
 
   def find(&pred)
-    if good = select(&pred) then good.first end
+    if good = drop_until(&pred) then good.first end
   end
 
   def forall(&pred)
@@ -193,6 +197,49 @@ class Seq
     fold { |a, b| b > a ? b : a }
   end
 
+  def zip_seq
+    firsts = map { |s| s.first if s }
+    if firsts.find { |x| not x.nil? }
+      Seq.new(firsts) { map { |s| s.rest if s }.zip_seq }
+    end
+  end
+
+  def zip(*others)
+    tail = others.to_seq.map { |s| s.to_seq } if others.length > 0
+    Seq.new(self) { tail }.zip_seq
+  end
+
+  def combine(*others, &op)
+    zip(*others).map { |seq| seq.fold &op if seq }
+  end
+
+  def +(*others)
+    combine(*others) { |a, b| a + b }
+  end
+
+  def -(*others)
+    combine(*others) { |a, b| a - b }
+  end
+
+  def *(*others)
+    combine(*others) { |a, b| a * b }
+  end
+
+  def /(*others)
+    combine(*others) { |a, b| a / b }
+  end
+
+  def ==(*others)
+    zip(*others).forall do |seq|
+      if seq and seq.rest
+        x = seq.first
+        seq.rest.forall { |y| y == x }
+      else
+        true
+      end
+    end
+  end
+
   def subseqs
     Seq.new(self) { rest.subseqs if rest }
   end
@@ -227,9 +274,20 @@ if __FILE__ == $0
   puts "All 3 letters: #{seq.forall { |x| x.length == 3 }}"
   puts "Reverse:       #{seq.reverse}"
   puts "Min and max:   #{seq.min}, #{seq.max}"
+  puts "Zip with ints: #{seq.zip('abcdefg'.chars).map(&:to_a).drop 3}"
   puts
   puts "Number range:  #{Seq.range 10, 20}"
   puts "Its sum:       #{Seq.range(10, 20).sum}"
   puts "Its product:   #{Seq.range(10, 20).product}"
   puts "String range:  #{Seq.range "ady", "aeg"}"
+  puts
+  fib = Seq.new(0) { Seq.new(1) { fib.rest + fib } }
+  puts "Fibonacci:     #{fib.take 12}"
+  puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
+  puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
+  puts
+  primes = Seq.from(2).select do |n|
+    n < 4 or primes.take_while { |m| m * m <= n }.forall { |m| n % m > 0}
+  end
+  puts "Prime numbers: #{primes.take(10)}"
 end
