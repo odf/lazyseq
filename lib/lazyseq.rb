@@ -42,7 +42,7 @@ class Seq
   end
 
   def rest
-    @rest = @rest.call()
+    @rest = @rest && @rest.call()
     class << self; def rest; @rest end end
     freeze
     @rest
@@ -285,12 +285,16 @@ class Seq
     if rest
       first.flat_map { |s| rest.cartesian_seq.map { |t| Seq.new(s) { t } } }
     else
-      first.map { |s| Seq.new(s) { nil } }
+      first.map { |s| Seq.new s }
     end
   end
 
   def cartesian(*others)
     sequentialize_with(*others).cartesian_seq
+  end
+
+  def cantor(*others)
+    sequentialize_with(*others).cantor_runs.flatten
   end
 
   def subseqs
@@ -299,6 +303,27 @@ class Seq
 
   def consec(n)
     subseqs.map { |s| s.take(n).to_a }
+  end
+
+  protected
+
+  def cantor_fold(back, remaining)
+    if remaining
+      t = Seq.new(remaining.first) { back }
+      z = zip(t).take_while { |x| x and x.pick 1 }.flat_map do |x|
+        a = x.first
+        x.pick(1).map { |y| Seq.new(a) { y } }
+      end
+      Seq.new(z) { cantor_fold t, remaining.rest }
+    end
+  end
+
+  def cantor_runs
+    if rest
+      first.cantor_fold nil, rest.cantor_runs
+    else
+      first.map { |x| Seq.new Seq.new x }
+    end
   end
 
   private
@@ -352,6 +377,7 @@ if __FILE__ == $0
   puts "Concatenation: #{seq.take(3).concat(fib.take(2), primes.take(3))}"
   puts "Interleave:    #{seq.take(3).interleave(fib.take(2), primes.take(3))}"
   puts "Cartesian:     #{fib.take(2).cartesian(primes.take(2), [0]).map &:to_a}"
+  puts "Cantor:        #{primes.cantor(primes, primes).take(5).map &:to_a}"
   puts
   puts "No first:      #{Seq.new() { seq }}"
   puts "One first:     #{Seq.new(1) { seq }}"
