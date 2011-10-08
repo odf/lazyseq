@@ -58,12 +58,20 @@ class Seq
     Seq.new(array[i]) { from_array array, i+1 } if i < array.length
   end
 
-  def self.from(start)
-    Seq.new(start) { from start.next }
+  def self.up_from(start)
+    Seq.new(start) { up_from start.next }
+  end
+
+  def self.down_from(start)
+    Seq.new(start) { down_from start.pred }
   end
 
   def self.range(start, limit)
-    Seq.from(start).take_while { |x| x <= limit }
+    if limit >= start
+      Seq.up_from(start).take_while { |x| x <= limit }
+    else
+      Seq.down_from(start).take_while { |x| x >= limit }
+    end
   end
 
   def self.constant(val)
@@ -252,12 +260,16 @@ class Seq
     Seq.new(first) { if rest then rest.lazy_concat(&seq) else seq.call end }
   end
 
-  def concat_seq
-    if rest then first.lazy_concat { rest.concat_seq } else first end
+  def flatten
+    if rest then first.lazy_concat { rest.flatten } else first end
+  end
+
+  def flat_map(&fun)
+    map(&fun).flatten
   end
 
   def concat(*others)
-    sequentialize_with(*others).concat_seq
+    sequentialize_with(*others).flatten
   end
 
   def interleave_seq
@@ -312,6 +324,7 @@ if __FILE__ == $0
   puts "Number range:  #{Seq.range 10, 20}"
   puts "Its sum:       #{Seq.range(10, 20).sum}"
   puts "Its product:   #{Seq.range(10, 20).product}"
+  puts "flat_map:      #{Seq.range(4, 1).flat_map { |n| Seq.range(1, n) }}" 
   puts "String range:  #{Seq.range "ady", "aeg"}"
   puts
   fib = Seq.new(0, 1) { fib.rest + fib }
@@ -319,7 +332,7 @@ if __FILE__ == $0
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
   puts
-  primes = Seq.from(2).select do |n|
+  primes = Seq.up_from(2).select do |n|
     n < 4 or primes.take_while { |m| m * m <= n }.forall { |m| n % m > 0 }
   end
   puts "Prime numbers: #{primes.take(10)}"
