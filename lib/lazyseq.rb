@@ -23,9 +23,22 @@ end
 class Seq
   attr_reader :first
 
-  def initialize(first, &rest)
-    @first = first
-    @rest  = rest
+  def initialize(*elems, &rest)
+    case elems.length
+    when 0
+      seq = rest.call()
+      @first = seq.first
+      @rest  = lambda { seq.rest }
+    when 1
+      @first = elems[0]
+      @rest  = rest
+    when 2
+      @first = elems[0]
+      @rest  = lambda { Seq.new elems[1], &rest }
+    else
+      @first = elems[0]
+      @rest  = lambda { elems[1..-2].to_seq.before Seq.new(elems[-1], &rest) }
+    end
   end
 
   def rest
@@ -240,6 +253,19 @@ class Seq
     end
   end
 
+  def before(seq)
+    Seq.new(first) { if rest then rest.before seq else seq end }
+  end
+
+  def concat_seq
+    if rest then first.before rest.concat_seq else first end
+  end
+
+  def concat(*others)
+    tail = others.to_seq.map { |s| s.to_seq } if others.length > 0
+    Seq.new(self) { tail }.concat_seq
+  end
+
   def subseqs
     Seq.new(self) { rest.subseqs if rest }
   end
@@ -281,13 +307,20 @@ if __FILE__ == $0
   puts "Its product:   #{Seq.range(10, 20).product}"
   puts "String range:  #{Seq.range "ady", "aeg"}"
   puts
-  fib = Seq.new(0) { Seq.new(1) { fib.rest + fib } }
+  fib = Seq.new(0, 1) { fib.rest + fib }
   puts "Fibonacci:     #{fib.take 12}"
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
   puts
   primes = Seq.from(2).select do |n|
-    n < 4 or primes.take_while { |m| m * m <= n }.forall { |m| n % m > 0}
+    n < 4 or primes.take_while { |m| m * m <= n }.forall { |m| n % m > 0 }
   end
   puts "Prime numbers: #{primes.take(10)}"
+  puts
+  puts "Concatenation: #{seq.take(3).concat(fib.take(2), primes.take(3))}"
+  puts
+  puts "No first:      #{Seq.new() { seq }}"
+  puts "One first:     #{Seq.new(1) { seq }}"
+  puts "Two first:     #{Seq.new(1, 2) { seq }}"
+  puts "Three firsts:  #{Seq.new(1, 2, 3) { seq }}"
 end
