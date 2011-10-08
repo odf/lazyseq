@@ -218,8 +218,7 @@ class Seq
   end
 
   def zip(*others)
-    tail = others.to_seq.map { |s| s.to_seq } if others.length > 0
-    Seq.new(self) { tail }.zip_seq
+    sequentialize_with(*others).zip_seq
   end
 
   def combine(*others, &op)
@@ -262,8 +261,7 @@ class Seq
   end
 
   def concat(*others)
-    tail = others.to_seq.map { |s| s.to_seq } if others.length > 0
-    Seq.new(self) { tail }.concat_seq
+    sequentialize_with(*others).concat_seq
   end
 
   def subseqs
@@ -278,6 +276,10 @@ class Seq
 
   def cycle_from(seq)
     if seq then Seq.new(seq.first) { cycle_from(seq.rest) } else cycle end
+  end
+
+  def sequentialize_with(*args)
+    Seq.new(self) { args.to_seq.map { |s| s.to_seq } if args.length > 0 }
   end
 end
 
