@@ -88,6 +88,10 @@ class Seq
     Seq.new(val) { constant val }
   end
 
+  def self.iterate(x, &f)
+    Seq.new(x) { iterate f.call(x), &f }
+  end
+
   def each(&fun)
     step = lambda { |seq|
       if seq
@@ -386,6 +390,7 @@ if __FILE__ == $0
   puts "Its product:   #{Seq.range(10, 20).product}"
   puts "flat_map:      #{Seq.range(4, 1).flat_map { |n| Seq.range(1, n) }}" 
   puts "String range:  #{Seq.range "ady", "aeg"}"
+  puts "Iterate:       #{Seq.iterate(1) { |x| 2 * x }.take(10)}"
   puts
   fib = Seq.new(0, 1) { fib.rest + fib }
   puts "Fibonacci:     #{fib.take 12}"
