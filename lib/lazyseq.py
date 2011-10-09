@@ -8,13 +8,13 @@ def seq(source):
 
 
 class Seq:
-    def __init__(self, first, rest):
+    def __init__(self, first, rest = None):
         self.first = first
         self.__rest = rest
 
     @property
     def rest(self):
-        self.rest = self.__rest()
+        self.rest = self.__rest and self.__rest()
         return self.rest
 
     def forced(self):
@@ -122,9 +122,21 @@ class Seq:
             r = self.rest.drop_until(pred)
             return r and r.select(pred)
 
+    def distinct(self, back = None):
+        if back and back.contains(self.first):
+            r = self.drop_until(lambda x: not back.contains(x))
+            return r and r.distinct(back)
+        else:
+            return Seq(self.first,
+                       lambda : self.rest and self.rest.distinct(
+                           Seq(self.first, lambda : back)))
+
     def find(self, pred):
         good = self.drop_until(pred)
         return good and good.first
+
+    def contains(self, val):
+        return self.drop_until(lambda x: x == val) is not None
 
     def forall(self, pred):
         return not self.drop_until(lambda x: not pred(x))
@@ -202,7 +214,10 @@ class Seq:
             lambda s: s.forall(lambda x: x == s.first) if s else true)
 
     def __eq__(self, other):
-        return self.eq(other)
+        try:
+            return self.eq(other)
+        except TypeError:
+            False
 
     def __ne__(self, other):
         return not self.eq(other)
@@ -240,10 +255,26 @@ class Seq:
                 lambda s: self.rest.cartesian_seq().map(
                     lambda t: Seq(s, lambda : t)))
         else:
-            return self.first.map(lambda s: Seq(s, lambda: None))
+            return self.first.map(lambda s: Seq(s))
 
     def cartesian(self, *others):
         return self.sequentialize_with(*others).cartesian_seq()
+
+    def cantor_fold(self, back, remaining):
+        if remaining:
+            t = Seq(remaining.first, lambda : back)
+            z = self.zip(t).take_while(lambda x: x and x.pick(1)).flat_map(
+                lambda x: x.pick(1).map(lambda y: Seq(x.first, lambda : y)))
+            return Seq(z, lambda : self.cantor_fold(t, remaining.rest))
+
+    def cantor_runs(self):
+        if self.rest:
+            return self.first.cantor_fold(None, self.rest.cantor_runs())
+        else:
+            return self.first.map(lambda x: Seq(Seq(x)))
+
+    def cantor(self, *others):
+        return self.sequentialize_with(*others).cantor_runs().flatten()
 
     def subseqs(self):
         return Seq(self, lambda : self.rest and self.rest.subseqs())
@@ -271,7 +302,7 @@ if __name__ == "__main__":
     print "All 3 letters:", s.forall(lambda x: len(x) == 3)
     print "Reverse:      ", s.reverse()
     print "Min and max:  ", "%s, %s" % (s.min(), s.max())
-    print "Zip with ints:", s.zip('abcdef').map(list).drop(3)
+    print "Zip with ints:", s.zip('abcdefg').map(list).drop(3)
     print
     print "Number range: ", s.range(10, 20)
     print "Its sum:      ", s.range(10, 20).sum()
@@ -292,3 +323,5 @@ if __name__ == "__main__":
     print "Concatenation:", s.take(3).concat(fib.take(2), primes.take(3))
     print "Interleave:   ", s.take(3).interleave(fib.take(2), primes.take(3))
     print "Cartesian:    ", fib.take(2).cartesian(primes.take(2), [0]).map(list)
+    print "Cantor:       ", primes.cantor(primes, primes).take(5).map(list)
+    print "Distinct:     ", fib.interleave(primes).distinct().take(10)
