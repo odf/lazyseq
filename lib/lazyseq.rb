@@ -235,7 +235,7 @@ class Seq
   end
 
   def fold(&op)
-    rest.reduce first, &op
+    if rest then rest.reduce first, &op else first end
   end
 
   def min
