@@ -20,6 +20,16 @@ def bounce(val)
 end
 
 
+def suspend(&block)
+  f = lambda {
+    val = block.call
+    f = lambda { val }
+    val
+  }
+  lambda { f.call }
+end
+
+
 class Seq
   attr_reader :first
 
@@ -176,11 +186,24 @@ class Seq
     end
   end
 
+  def distinct(back = nil)
+    if back and back.contains? first
+      r = drop_until { |x| not back.contains? x }
+      r.distinct(back) if r
+    else
+      Seq.new(first) { rest.distinct Seq.new(first) { back } if rest }
+    end
+  end
+
   def find(&pred)
     if good = drop_until(&pred) then good.first end
   end
 
-  def forall(&pred)
+  def contains?(val)
+    not drop_until { |x| x == val }.nil?
+  end
+
+  def forall?(&pred)
     not drop_until { |x| not pred.call x }
   end
 
@@ -221,7 +244,7 @@ class Seq
 
   def zip_seq
     firsts = map { |s| s.first if s }
-    unless firsts.forall &:nil?
+    unless firsts.forall? &:nil?
       Seq.new(firsts) { map { |s| s.rest if s }.zip_seq }
     end
   end
@@ -251,8 +274,8 @@ class Seq
   end
 
   def ==(*others)
-    zip(*others).forall do |seq|
-      if seq then seq.forall { |x| x == seq.first } else true end
+    zip(*others).forall? do |seq|
+      if seq then seq.forall? { |x| x == seq.first } else true end
     end
   end
 
@@ -353,7 +376,7 @@ if __FILE__ == $0
   puts "Start at fox:  #{seq.drop_until { |x| x == 'fox' }}"
   puts "Five letters:  #{seq.select { |x| x.length == 5 }}"
   puts "First with r:  #{seq.find { |x| x.include? 'r' }}"
-  puts "All 3 letters: #{seq.forall { |x| x.length == 3 }}"
+  puts "All 3 letters: #{seq.forall? { |x| x.length == 3 }}"
   puts "Reverse:       #{seq.reverse}"
   puts "Min and max:   #{seq.min}, #{seq.max}"
   puts "Zip with ints: #{seq.zip('abcdefg'.chars).map(&:to_a).drop 3}"
@@ -369,8 +392,13 @@ if __FILE__ == $0
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
   puts "Compare:       #{fib.take(10) == [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
   puts
+  puts "No first:      #{Seq.new() { seq }}"
+  puts "One first:     #{Seq.new(1) { seq }}"
+  puts "Two first:     #{Seq.new(1, 2) { seq }}"
+  puts "Three firsts:  #{Seq.new(1, 2, 3) { seq }}"
+  puts
   primes = Seq.up_from(2).select do |n|
-    n < 4 or primes.take_while { |m| m * m <= n }.forall { |m| n % m > 0 }
+    n < 4 or primes.take_while { |m| m * m <= n }.forall? { |m| n % m > 0 }
   end
   puts "Prime numbers: #{primes.take(10)}"
   puts
@@ -378,9 +406,5 @@ if __FILE__ == $0
   puts "Interleave:    #{seq.take(3).interleave(fib.take(2), primes.take(3))}"
   puts "Cartesian:     #{fib.take(2).cartesian(primes.take(2), [0]).map &:to_a}"
   puts "Cantor:        #{primes.cantor(primes, primes).take(5).map &:to_a}"
-  puts
-  puts "No first:      #{Seq.new() { seq }}"
-  puts "One first:     #{Seq.new(1) { seq }}"
-  puts "Two first:     #{Seq.new(1, 2) { seq }}"
-  puts "Three firsts:  #{Seq.new(1, 2, 3) { seq }}"
+  puts "Distinct:      #{fib.interleave(primes).distinct.take(10)}"
 end
