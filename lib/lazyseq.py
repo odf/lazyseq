@@ -220,11 +220,37 @@ class Seq:
     def flat_map(self, fun):
         return self.map(fun).flatten()
 
+    def concat(self, *others):
+        return self.sequentialize_with(*others).flatten()
+
+    def interleave_seq(self):
+        head = lambda s: s.map(lambda t: t.first)
+        tail = lambda s: s.map(lambda t: t.rest).interleave_seq()
+        
+        alive = self.select(lambda s: s is not None)
+        if alive:
+            return head(alive).lazy_concat(lambda : tail(alive))
+
+    def interleave(self, *others):
+        return self.sequentialize_with(*others).interleave_seq()
+
+    def cartesian_seq(self):
+        if self.rest:
+            return self.first.flat_map(
+                lambda s: self.rest.cartesian_seq().map(
+                    lambda t: Seq(s, lambda : t)))
+        else:
+            return self.first.map(lambda s: Seq(s, lambda: None))
+
+    def cartesian(self, *others):
+        return self.sequentialize_with(*others).cartesian_seq()
+
     def subseqs(self):
         return Seq(self, lambda : self.rest and self.rest.subseqs())
 
     def consec(self, n):
         return self.subseqs().map(lambda s: list(s.take(n)))
+
 
 if __name__ == "__main__":
     s = seq("the quick brown fox jumps over".split())
@@ -263,3 +289,6 @@ if __name__ == "__main__":
                             forall(lambda m: n % m)))
     print "Prime numbers:", primes.take(10)
     print
+    print "Concatenation:", s.take(3).concat(fib.take(2), primes.take(3))
+    print "Interleave:   ", s.take(3).interleave(fib.take(2), primes.take(3))
+    print "Cartesian:    ", fib.take(2).cartesian(primes.take(2), [0]).map(list)
