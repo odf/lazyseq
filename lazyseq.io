@@ -10,6 +10,17 @@ Seq := Object clone do(
 
     rest   := method(rest = rest_ call)
 
+    asList := method(
+	a := List clone
+        step := method(s, if(s, a append(s first); step(s rest), a))
+	bounce(step(self)))
+
+    asString := method(asList join(" -> "))
+
+    fromList := method(a, i_,
+    	i := if(i_, i_, 0)
+    	if(i < a size, new(a at(i), block(fromList(a, i + 1)))))
+
     upFrom := method(start, new(start, block(upFrom(start + 1))))
 
     range  := method(start, limit, upFrom(start) take(limit - start + 1))
@@ -22,3 +33,8 @@ Seq := Object clone do(
 )
 
 Seq range(10, 20) size println
+s := Seq fromList("the quick brown fox jumps over" split)
+s println
+s size println
+s first println
+s asList println
