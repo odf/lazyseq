@@ -1,6 +1,6 @@
 Fun with lazy sequences in Ruby and Python.
 
-Defines a class `Seq` which allows on to do things like this:
+Defines a class `Seq` which allows one to do things like this:
 
     fib = Seq.new(0, 1) { fib.rest + fib }
     puts "Fibonacci numbers: #{fib.take 10} ..."
