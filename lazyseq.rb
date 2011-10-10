@@ -20,16 +20,6 @@ def bounce(val)
 end
 
 
-def suspend(&block)
-  f = lambda {
-    val = block.call
-    f = lambda { val }
-    val
-  }
-  lambda { f.call }
-end
-
-
 class Seq
   attr_reader :first
 
