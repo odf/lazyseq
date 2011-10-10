@@ -1,3 +1,11 @@
+def bounce(val)
+  while val.is_a? Proc
+    val = val.call
+  end
+  val
+end
+
+
 class Array
   def to_seq
     Seq.from_array self
@@ -9,14 +17,6 @@ module Enumerable
   def to_seq
     to_a.to_seq
   end
-end
-
-
-def bounce(val)
-  while val.is_a? Proc
-    val = val.call
-  end
-  val
 end
 
 
@@ -54,6 +54,30 @@ class Seq
     self
   end
 
+  def to_enum
+    Enumerator.new do |yielder|
+      s = self
+      while s
+        yielder << s.first
+        s = s.rest
+      end
+    end
+  end
+
+  def to_seq
+    self
+  end
+
+  def to_a
+    to_enum.to_a
+  end
+
+  def to_hash
+    hash = {}
+    to_enum.each { |k, v| hash[k] = v }
+    hash
+  end
+
   def self.from_array(array, i = 0)
     Seq.new(array[i]) { from_array array, i+1 } if i < array.length
   end
@@ -80,32 +104,6 @@ class Seq
 
   def self.iterate(x, &f)
     Seq.new(x) { iterate f.call(x), &f }
-  end
-
-  def each(&fun)
-    step = lambda { |seq|
-      if seq
-        fun.call seq.first
-        lambda { step.call seq.rest }
-      end
-    }
-    bounce step.call(self)
-  end
-
-  def to_seq
-    self
-  end
-
-  def to_a
-    array = []
-    each { |x| array.push x }
-    array
-  end
-
-  def to_hash
-    hash = {}
-    each { |k, v| hash[k] = v }
-    hash
   end
 
   def to_s
@@ -169,6 +167,10 @@ class Seq
 
   def cycle
     cycle_from self
+  end
+
+  def cycle_from(seq)
+    if seq then Seq.new(seq.first) { cycle_from(seq.rest) } else cycle end
   end
 
   def select(&pred)
@@ -243,6 +245,10 @@ class Seq
     end
   end
 
+  def sequentialize_with(*args)
+    Seq.new(self) { args.to_seq.map { |s| s.to_seq } if args.length > 0 }
+  end
+
   def zip(*others)
     sequentialize_with(*others).zip_seq
   end
@@ -310,20 +316,6 @@ class Seq
     sequentialize_with(*others).cartesian_seq
   end
 
-  def cantor(*others)
-    sequentialize_with(*others).cantor_runs.flatten
-  end
-
-  def subseqs
-    Seq.new(self) { rest.subseqs if rest }
-  end
-
-  def consec(n)
-    subseqs.map { |s| s.take(n).to_a }
-  end
-
-  protected
-
   def cantor_fold(back, remaining)
     if remaining
       t = Seq.new(remaining.first) { back }
@@ -343,14 +335,16 @@ class Seq
     end
   end
 
-  private
-
-  def cycle_from(seq)
-    if seq then Seq.new(seq.first) { cycle_from(seq.rest) } else cycle end
+  def cantor(*others)
+    sequentialize_with(*others).cantor_runs.flatten
   end
 
-  def sequentialize_with(*args)
-    Seq.new(self) { args.to_seq.map { |s| s.to_seq } if args.length > 0 }
+  def subseqs
+    Seq.new(self) { rest.subseqs if rest }
+  end
+
+  def consec(n)
+    subseqs.map { |s| s.take(n).to_a }
   end
 end
 
