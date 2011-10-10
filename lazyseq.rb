@@ -367,7 +367,7 @@ if __FILE__ == $0
   puts "All 3 letters: #{seq.forall? { |x| x.length == 3 }}"
   puts "Reverse:       #{seq.reverse}"
   puts "Min and max:   #{seq.min}, #{seq.max}"
-  puts "Zip with ints: #{seq.zip('abcdefg'.chars).map(&:to_a).drop 3}"
+  puts "With indexes:  #{seq.zip('abcdefg'.chars).map(&:to_a).drop 3}"
   puts
   puts "Number range:  #{Seq.range 10, 20}"
   puts "Its sum:       #{Seq.range(10, 20).sum}"
@@ -383,7 +383,7 @@ if __FILE__ == $0
   puts
   puts "No first:      #{Seq.new() { seq }}"
   puts "One first:     #{Seq.new(1) { seq }}"
-  puts "Two first:     #{Seq.new(1, 2) { seq }}"
+  puts "Two firsts:    #{Seq.new(1, 2) { seq }}"
   puts "Three firsts:  #{Seq.new(1, 2, 3) { seq }}"
   puts
   primes = Seq.up_from(2).select do |n|

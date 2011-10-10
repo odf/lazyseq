@@ -317,7 +317,7 @@ if __name__ == "__main__":
     print "All 3 letters:", s.forall(lambda x: len(x) == 3)
     print "Reverse:      ", s.reverse()
     print "Min and max:  ", "%s, %s" % (s.min(), s.max())
-    print "Zip with ints:", s.zip('abcdefg').map(list).drop(3)
+    print "With indexes: ", s.zip('abcdefg').map(list).drop(3)
     print
     print "Number range: ", s.range(10, 20)
     print "Its sum:      ", s.range(10, 20).sum()
