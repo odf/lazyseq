@@ -12,7 +12,7 @@ Defines a class `Seq` which allows on to do things like this:
 
 or in Python:
 
-    fib = Seq(0, lambda : Seq(1, lambda : fib.rest + fib))
+    fib = Seq(0, 1, lambda : fib.rest + fib)
     print "Fibonacci numbers: ", fib.take(10), "..."
 
     primes = Seq.up_from(2).select(

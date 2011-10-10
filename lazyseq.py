@@ -8,9 +8,24 @@ def seq(source):
 
 
 class Seq:
-    def __init__(self, first, rest = None):
-        self.first = first
-        self.__rest = rest
+    def __init__(self, *args):
+        if len(args) == 2 and callable(args[1]):
+            self.first  = args[0]
+            self.__rest = args[1]
+        else:
+            if len(args) == 0:
+                raise ArgumentError("Use None for empty sequences.")
+
+            if callable(args[-1]):
+                if len(args) == 1:
+                    s = args[0]()
+                else:
+                    s = seq(args[:-2]).concat(Seq(*args[-2:]))
+            else:
+                s = seq(args)
+                
+            self.first = s.first
+            self.__rest = lambda : s.rest
 
     @property
     def rest(self):
@@ -310,10 +325,15 @@ if __name__ == "__main__":
     print "flat_map:     ", Seq.range(4, 1).flat_map(lambda n: Seq.range(1, n))
     print "Iterate:      ", Seq.iterate(1, lambda x: 2 * x).take(10)
     print
-    fib = Seq(0, lambda : Seq(1, lambda : fib.rest + fib))
+    fib = Seq(0, 1, lambda : fib.rest + fib)
     print "Fibonacci:    ", fib.take(12)
     print "Compare:      ", (fib.take(10) == (0, 1, 1, 2, 3, 5, 8, 13, 21, 34))
     print "Compare:      ", (fib.take(10) == (0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34))
+    print
+    print "No first:     ", Seq(lambda : s)
+    print "One first:    ", Seq(1, lambda : s)
+    print "Two firsts:   ", Seq(1, 2, lambda : s)
+    print "Three firsts: ", Seq(1, 2, 3, lambda : s)
     print
     primes = Seq.up_from(2).select(
         lambda n: n < 4 or (primes.take_while(lambda m: m * m <= n).
