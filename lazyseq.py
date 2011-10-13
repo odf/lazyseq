@@ -4,6 +4,12 @@ def compose(f, g):
 def option(f):
     return lambda x: None if x is None else f(x)
 
+def curry(f, x):
+    return lambda y: f(x, y)
+
+def rcurry(f, y):
+    return lambda x: f(x, y)
+
 def bounce(val):
     while callable(val):
         val = val()
@@ -211,7 +217,7 @@ class Seq:
         return self.sequentialize_with(*others).zip_seq()
 
     def combine(self, op, *others):
-        return self.zip(*others).map(lambda s: s and s.fold(op))
+        return self.zip(*others).map(option(rcurry(Seq.fold, op)))
 
     def add(self, *others):
         return self.combine((lambda a, b: a + b), *others)
@@ -267,12 +273,10 @@ class Seq:
         return self.sequentialize_with(*others).flatten()
 
     def interleave_seq(self):
-        head = lambda s: s.map(Seq.first)
-        tail = lambda s: s.map(Seq.rest).interleave_seq()
-        
         alive = self.select(lambda s: s is not None)
         if alive:
-            return head(alive).lazy_concat(lambda : tail(alive))
+            return alive.map(Seq.first).lazy_concat(
+                lambda : alive.map(Seq.rest).interleave_seq())
 
     def interleave(self, *others):
         return self.sequentialize_with(*others).interleave_seq()
@@ -308,7 +312,7 @@ class Seq:
         return Seq(self, lambda : self.rest() and self.rest().subseqs())
 
     def consec(self, n):
-        return self.subseqs().map(lambda s: list(s.take(n)))
+        return self.subseqs().map(compose(list, rcurry(Seq.take, n)))
 
 
 if __name__ == "__main__":
@@ -335,7 +339,7 @@ if __name__ == "__main__":
     print "Number range: ", s.range(10, 20)
     print "Its sum:      ", s.range(10, 20).sum()
     print "Its product:  ", s.range(10, 20).product()
-    print "flat_map:     ", Seq.range(4, 1).flat_map(lambda n: Seq.range(1, n))
+    print "flat_map:     ", Seq.range(4, 1).flat_map(curry(Seq.range, 1))
     print "Iterate:      ", Seq.iterate(1, lambda x: 2 * x).take(10)
     print
     fib = Seq(0, 1, lambda : fib.rest() + fib)
