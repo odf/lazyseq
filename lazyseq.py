@@ -1,3 +1,9 @@
+def compose(f, g):
+    return lambda x: f(g(x))
+
+def option(f):
+    return lambda x: None if x is None else f(x)
+
 def bounce(val):
     while callable(val):
         val = val()
@@ -10,8 +16,8 @@ def seq(source):
 class Seq:
     def __init__(self, *args):
         if len(args) == 2 and callable(args[1]):
-            self.__first  = args[0]
-            self.__rest = args[1]
+            self.__first = args[0]
+            self.__rest  = args[1]
         else:
             if len(args) == 0:
                 raise ArgumentError("Use None for empty sequences.")
@@ -25,7 +31,7 @@ class Seq:
                 s = seq(args)
                 
             self.__first = s.first()
-            self.__rest = lambda : s.rest()
+            self.__rest  = lambda : s.rest()
 
     def first(self):
         return self.__first
@@ -193,10 +199,10 @@ class Seq:
         return self.fold(lambda a, b: b if b > a else a)
 
     def zip_seq(self):
-        firsts = self.map(lambda s: s and s.first())
+        firsts = self.map(option(Seq.first))
         if not firsts.forall(lambda s: s is None):
             return Seq(firsts,
-                       lambda : self.map(lambda s: s and s.rest()).zip_seq())
+                       lambda : self.map(option(Seq.rest)).zip_seq())
 
     def sequentialize_with(self, *args):
         return Seq(self, lambda: args and seq(args).map(seq))
@@ -293,7 +299,7 @@ class Seq:
         if self.rest():
             return self.first().cantor_fold(None, self.rest().cantor_runs())
         else:
-            return self.first().map(lambda x: Seq(Seq(x)))
+            return self.first().map(compose(Seq, Seq))
 
     def cantor(self, *others):
         return self.sequentialize_with(*others).cantor_runs().flatten()
