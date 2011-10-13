@@ -340,7 +340,7 @@ if __name__ == "__main__":
     print "Its sum:      ", s.range(10, 20).sum()
     print "Its product:  ", s.range(10, 20).product()
     print "flat_map:     ", Seq.range(4, 1).flat_map(curry(Seq.range, 1))
-    print "Iterate:      ", Seq.iterate(1, lambda x: 2 * x).take(10)
+    print "Iterate:      ", Seq.iterate(1, curry(int.__mul__, 2)).take(10)
     print
     fib = Seq(0, 1, lambda : fib.rest() + fib)
     print "Fibonacci:    ", fib.take(12)
