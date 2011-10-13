@@ -10,7 +10,7 @@ def seq(source):
 class Seq:
     def __init__(self, *args):
         if len(args) == 2 and callable(args[1]):
-            self.first  = args[0]
+            self.__first  = args[0]
             self.__rest = args[1]
         else:
             if len(args) == 0:
@@ -24,24 +24,30 @@ class Seq:
             else:
                 s = seq(args)
                 
-            self.first = s.first
-            self.__rest = lambda : s.rest
+            self.__first = s.first()
+            self.__rest = lambda : s.rest()
+
+    def first(self):
+        return self.__first
 
     @property
+    def __getrest(self):
+        self.__getrest = self.__rest and self.__rest()
+        return self.__getrest
+
     def rest(self):
-        self.rest = self.__rest and self.__rest()
-        return self.rest
+        return self.__getrest
 
     def forced(self):
-        step = lambda s: s and (lambda : step(s.rest))
-        bounce(step(self.rest))
+        step = lambda s: s and (lambda : step(s.rest()))
+        bounce(step(self.rest()))
         return self
 
     def __iter__(self):
         s = self
         while s:
-            yield s.first
-            s = s.rest
+            yield s.first()
+            s = s.rest()
 
     @classmethod
     def from_array(cls, a, i = 0):
@@ -76,79 +82,80 @@ class Seq:
 
     def size(self):
         def step(s, n):
-            return (lambda : step(s.rest, n + 1)) if s else n
+            return (lambda : step(s.rest(), n + 1)) if s else n
         return bounce(step(self, 0))
 
     def last(self):
         def step(s):
-            return (lambda : step(s.rest)) if s.rest else s.first
+            return (lambda : step(s.rest())) if s.rest() else s.first()
         return bounce(step(self))
 
     def reverse(self):
         def step(rev, s):
             if s:
-                return lambda : step(Seq(s.first, lambda : rev), s.rest)
+                return lambda : step(Seq(s.first(), lambda : rev), s.rest())
             else:
                 return rev
         return bounce(step(None, self))
 
     def take(self, n):
         if n > 0:
-            return Seq(self.first,
-                       lambda : self.rest and self.rest.take(n-1))
+            return Seq(self.first(),
+                       lambda : self.rest() and self.rest().take(n-1))
 
     def take_while(self, pred):
-        if pred(self.first):
-            return Seq(self.first,
-                       lambda : self.rest and self.rest.take_while(pred))
+        if pred(self.first()):
+            return Seq(self.first(),
+                       lambda : self.rest() and self.rest().take_while(pred))
 
     def drop(self, n):
         def step(s, n):
             if s and n > 0:
-                return lambda : step(s.rest, n-1)
+                return lambda : step(s.rest(), n-1)
             else:
                 return s
         return bounce(step(self, n))
 
     def drop_until(self, pred):
         def step(s):
-            if s and not pred(s.first):
-                return lambda : step(s.rest)
+            if s and not pred(s.first()):
+                return lambda : step(s.rest())
             else:
                 return s
         return bounce(step(self))
 
     def pick(self, n):
-        return self.drop(n).first
+        return self.drop(n).first()
 
     def cycle(self):
         return self.cycle_from(self)
 
     def cycle_from(self, s):
         if s:
-            return Seq(s.first, lambda : self.cycle_from(s.rest))
+            return Seq(s.first(), lambda : self.cycle_from(s.rest()))
         else:
             return self.cycle()
 
     def select(self, pred):
-        if pred(self.first):
-            return Seq(self.first, lambda : self.rest and self.rest.select(pred))
-        elif self.rest:
-            r = self.rest.drop_until(pred)
+        if pred(self.first()):
+            return Seq(self.first(),
+                       lambda : self.rest() and self.rest().select(pred))
+        elif self.rest():
+            r = self.rest().drop_until(pred)
             return r and r.select(pred)
 
     def distinct(self, back = None):
-        if back and back.contains(self.first):
+        if back and back.contains(self.first()):
             r = self.drop_until(lambda x: not back.contains(x))
             return r and r.distinct(back)
         else:
-            return Seq(self.first,
-                       lambda : self.rest and self.rest.distinct(
-                           Seq(self.first, lambda : back)))
+            return Seq(self.first(),
+                       lambda : self.rest() and self.rest().distinct(
+                           Seq(self.first(), lambda : back)))
 
     def find(self, pred):
         good = self.drop_until(pred)
-        return good and good.first
+        return good and good.first()
 
     def contains(self, val):
         return self.drop_until(lambda x: x == val) is not None
@@ -157,12 +164,12 @@ class Seq:
         return not self.drop_until(lambda x: not pred(x))
 
     def map(self, f):
-        return Seq(f(self.first), lambda : self.rest and self.rest.map(f))
+        return Seq(f(self.first()), lambda : self.rest() and self.rest().map(f))
 
     def reduce(self, start, op):
         def step(val, s):
             if s:
-                return lambda : step(op(val, s.first), s.rest)
+                return lambda : step(op(val, s.first()), s.rest())
             else:
                 return val
         return bounce(step(start, self))
@@ -174,10 +181,10 @@ class Seq:
         return self.reduce(1, lambda a, b: a * b)
 
     def fold(self, op):
-        if self.rest:
-            return self.rest.reduce(self.first, op)
+        if self.rest():
+            return self.rest().reduce(self.first(), op)
         else:
-            return self.first
+            return self.first()
 
     def min(self):
         return self.fold(lambda a, b: b if b < a else a)
@@ -186,10 +193,10 @@ class Seq:
         return self.fold(lambda a, b: b if b > a else a)
 
     def zip_seq(self):
-        firsts = self.map(lambda s: s and s.first)
+        firsts = self.map(lambda s: s and s.first())
         if not firsts.forall(lambda s: s is None):
             return Seq(firsts,
-                       lambda : self.map(lambda s: s and s.rest).zip_seq())
+                       lambda : self.map(lambda s: s and s.rest()).zip_seq())
 
     def sequentialize_with(self, *args):
         return Seq(self, lambda: args and seq(args).map(seq))
@@ -226,7 +233,7 @@ class Seq:
 
     def eq(self, *others):
         return self.zip(*others).forall(
-            lambda s: s.forall(lambda x: x == s.first) if s else true)
+            lambda s: s.forall(lambda x: x == s.first()) if s else true)
 
     def __eq__(self, other):
         try:
@@ -238,14 +245,14 @@ class Seq:
         return not self.eq(other)
 
     def lazy_concat(self, s):
-        return Seq(self.first,
-                   lambda : self.rest.lazy_concat(s) if self.rest else s())
+        return Seq(self.first(),
+                   lambda : self.rest().lazy_concat(s) if self.rest() else s())
 
     def flatten(self):
-        if self.rest:
-            return self.first.lazy_concat(lambda : self.rest.flatten())
+        if self.rest():
+            return self.first().lazy_concat(lambda : self.rest().flatten())
         else:
-            return self.first
+            return self.first()
 
     def flat_map(self, fun):
         return self.map(fun).flatten()
@@ -254,8 +261,8 @@ class Seq:
         return self.sequentialize_with(*others).flatten()
 
     def interleave_seq(self):
-        head = lambda s: s.map(lambda t: t.first)
-        tail = lambda s: s.map(lambda t: t.rest).interleave_seq()
+        head = lambda s: s.map(Seq.first)
+        tail = lambda s: s.map(Seq.rest).interleave_seq()
         
         alive = self.select(lambda s: s is not None)
         if alive:
@@ -265,34 +272,34 @@ class Seq:
         return self.sequentialize_with(*others).interleave_seq()
 
     def cartesian_seq(self):
-        if self.rest:
-            return self.first.flat_map(
-                lambda s: self.rest.cartesian_seq().map(
+        if self.rest():
+            return self.first().flat_map(
+                lambda s: self.rest().cartesian_seq().map(
                     lambda t: Seq(s, lambda : t)))
         else:
-            return self.first.map(lambda s: Seq(s))
+            return self.first().map(Seq)
 
     def cartesian(self, *others):
         return self.sequentialize_with(*others).cartesian_seq()
 
     def cantor_fold(self, back, remaining):
         if remaining:
-            t = Seq(remaining.first, lambda : back)
+            t = Seq(remaining.first(), lambda : back)
             z = self.zip(t).take_while(lambda x: x and x.pick(1)).flat_map(
-                lambda x: x.pick(1).map(lambda y: Seq(x.first, lambda : y)))
-            return Seq(z, lambda : self.cantor_fold(t, remaining.rest))
+                lambda x: x.pick(1).map(lambda y: Seq(x.first(), lambda : y)))
+            return Seq(z, lambda : self.cantor_fold(t, remaining.rest()))
 
     def cantor_runs(self):
-        if self.rest:
-            return self.first.cantor_fold(None, self.rest.cantor_runs())
+        if self.rest():
+            return self.first().cantor_fold(None, self.rest().cantor_runs())
         else:
-            return self.first.map(lambda x: Seq(Seq(x)))
+            return self.first().map(lambda x: Seq(Seq(x)))
 
     def cantor(self, *others):
         return self.sequentialize_with(*others).cantor_runs().flatten()
 
     def subseqs(self):
-        return Seq(self, lambda : self.rest and self.rest.subseqs())
+        return Seq(self, lambda : self.rest() and self.rest().subseqs())
 
     def consec(self, n):
         return self.subseqs().map(lambda s: list(s.take(n)))
@@ -304,7 +311,7 @@ if __name__ == "__main__":
     print "Forced:       ", s.forced()
     print "Mangle last:  ",
     print s.subseqs().map(
-        lambda sub: sub.first if sub.rest else sub.first.upper())
+        lambda sub: sub.first() if sub.rest() else sub.first().upper())
     print "Size:         ", s.size()
     print "Last:         ", s.last()
     print "Runs of 3:    ", s.consec(3).drop(3)
@@ -325,7 +332,7 @@ if __name__ == "__main__":
     print "flat_map:     ", Seq.range(4, 1).flat_map(lambda n: Seq.range(1, n))
     print "Iterate:      ", Seq.iterate(1, lambda x: 2 * x).take(10)
     print
-    fib = Seq(0, 1, lambda : fib.rest + fib)
+    fib = Seq(0, 1, lambda : fib.rest() + fib)
     print "Fibonacci:    ", fib.take(12)
     print "Compare:      ", (fib.take(10) == (0, 1, 1, 2, 3, 5, 8, 13, 21, 34))
     print "Compare:      ", (fib.take(10) == (0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34))
