@@ -314,6 +314,17 @@ class Seq:
     def consec(self, n):
         return self.subseqs().map(compose(list, rcurry(Seq.take, n)))
 
+    def treewalk(self, root, next_level_seq):
+        def next_step(path):
+            if path:
+                top = path.first()
+                s = next_level_seq(top)
+                if s:
+                    return Seq(s, lambda : path)
+                elif top.rest():
+                    return Seq(top.rest(), lambda : path.rest())
+        
+
 
 if __name__ == "__main__":
     s = seq("the quick brown fox jumps over".split())
