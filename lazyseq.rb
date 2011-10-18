@@ -346,6 +346,26 @@ class Seq
   def consec(n)
     subseqs.map { |s| s.take(n).to_a }
   end
+
+  def self.tree_walk(root, next_level)
+    next_step = lambda { |path|
+      if path
+        top = path.first
+        s = next_level.call top.first
+        if s
+          Seq.new(s) { path }
+        elsif top.rest
+          Seq.new(top.rest) { path.rest }
+        elsif path.rest
+          backtrack = path.rest.drop_until { |s| s.rest }
+          Seq.new(backtrack.first.rest) { backtrack.rest } if backtrack
+        end
+      end
+    }
+
+    Seq.iterate(Seq.new(Seq.new(root)), &next_step).take_while { |x|
+      x }.map { |x| x.first.first }
+  end
 end
 
 
@@ -396,4 +416,20 @@ if __FILE__ == $0
   puts "Cartesian:     #{fib.take(2).cartesian(primes.take(2), [0]).map &:to_a}"
   puts "Cantor:        #{primes.cantor(primes, primes).take(5).map &:to_a}"
   puts "Distinct:      #{fib.interleave(primes).distinct.take(10)}"
+  puts
+
+  def permutations(degree)
+    next_level = lambda { |perm|
+      i = perm.index nil
+      unless i.nil?
+        Seq.range(1, degree).select { |n| not perm.include? n }.map { |to|
+          perm[0..i-1] + [to] + perm[i+1..-1] }
+      end
+    }
+
+    Seq.tree_walk([0] + Array.new(degree), next_level).map { |p|
+      p[1..-1] }.select { |p| not p.include? nil }
+  end
+
+  puts "Permutations:  #{permutations 4}"
 end
