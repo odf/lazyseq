@@ -1,3 +1,6 @@
+def identity(x):
+    return x
+
 def compose(f, g):
     return lambda x: f(g(x))
 
@@ -9,6 +12,9 @@ def curry(f, x):
 
 def rcurry(f, y):
     return lambda x: f(x, y)
+
+def twice(f):
+    return lambda x: f(f(x))
 
 def bounce(val):
     while callable(val):
@@ -314,16 +320,24 @@ class Seq:
     def consec(self, n):
         return self.subseqs().map(compose(list, rcurry(Seq.take, n)))
 
-    def treewalk(self, root, next_level_seq):
+    @classmethod
+    def tree_walk(cls, root, next_level):
         def next_step(path):
             if path:
                 top = path.first()
-                s = next_level_seq(top)
+                s = next_level(top.first())
                 if s:
                     return Seq(s, lambda : path)
                 elif top.rest():
                     return Seq(top.rest(), lambda : path.rest())
-        
+                elif path.rest():
+		    backtrack = path.rest().drop_until(Seq.rest)
+                    if backtrack:
+                        return Seq(backtrack.first().rest(),
+                            lambda : backtrack.rest())
+
+        return Seq.iterate(Seq(Seq(root)), next_step).take_while(identity).map(
+            twice(Seq.first))
 
 
 if __name__ == "__main__":
@@ -373,3 +387,16 @@ if __name__ == "__main__":
     print "Cartesian:    ", fib.take(2).cartesian(primes.take(2), [0]).map(list)
     print "Cantor:       ", primes.cantor(primes, primes).take(5).map(list)
     print "Distinct:     ", fib.interleave(primes).distinct().take(10)
+    print
+
+    def permutations(degree):
+        def next_level(perm):
+            if None in perm[1:]:
+                i = perm.index(None, 1)
+                return Seq.range(1, degree).select(lambda n: not n in perm).map(
+                    lambda to: perm[:i] + [to] + perm[i+1:])
+
+        return Seq.tree_walk([None] * (degree + 1), next_level).map(
+            lambda p: p[1:]).select(lambda p: not None in p)
+
+    print "Permutations: ", permutations(4)
