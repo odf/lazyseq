@@ -1,12 +1,4 @@
-identity = (x)    -> x
-compose  = (f, g) -> (x) -> f g x
-option   = (f)    -> (x) -> f x if x
-curry    = (f, x) -> (y) -> f x, y
-rcurry   = (f, y) -> (x) -> f x, y
-twice    = (f)    -> (x) -> f f x
-
 bounce = (val) -> val = val() while typeof val == 'function'; val
-
 
 seq = (source) ->
   if source.constructor == Seq
