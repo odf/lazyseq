@@ -57,6 +57,8 @@ class Seq
 
   @constant: (val) -> new Seq val, => @constant val
 
+  @iterate: (x, f) -> new Seq x, => @iterate f(x), f
+
   toString: -> @toArray().join ' '
 
   size: ->
@@ -130,6 +132,16 @@ class Seq
 
   zip: (others...) -> @sequentializeWith(others...).zipSeq()
 
+  lazyConcat: (s) ->
+    new Seq @first(), => if @rest() then @rest().lazyConcat s else s()
+
+  flatten: ->
+    if @rest() then @first().lazyConcat => @rest().flatten() else @first()
+
+  flatMap: (fun) -> @map(fun).flatten()
+
+  concat: (others...) -> @sequentializeWith(others...).flatten()
+
   subseqs: -> new Seq this, => @rest()?.subseqs()
 
   consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
@@ -163,3 +175,8 @@ if module? and not module.parent
   console.log "Number range:  #{Seq.range 10, 20}"
   console.log "Its sum:       #{Seq.range(10, 20).sum()}"
   console.log "Its product:   #{Seq.range(10, 20).product()}"
+  console.log "flatMap:       #{Seq.range(4, 1).flatMap (n) -> Seq.range(1, n)}"
+  console.log "Iterate:       #{Seq.iterate(1, (n) -> 2 * n).take(10)}"
+  console.log
+
+  fib = new Seq 0, 1, -> fib.rest().plus + fib
