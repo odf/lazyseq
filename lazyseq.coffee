@@ -103,7 +103,15 @@ class Seq
     else if @rest()
       @rest().dropUntil(pred)?.select(pred)
 
+  distinct: (back = null) ->
+    if back?.contains @first()
+      @dropUntil((x) -> not back.contains x)?.distinct(back)
+    else
+      new Seq @first(), => @rest()?.distinct new Seq @first(), -> back
+
   find: (pred) -> @dropUntil(pred)?.first()
+
+  contains: (val) -> @dropUntil((x) -> x == val)?
 
   forall: (pred) -> not @dropUntil (x) -> not pred(x)
 
@@ -173,7 +181,7 @@ class Seq
   cantorFold: (back, remaining) ->
     if remaining
       t = new Seq remaining.first(), -> back
-      z = @zip(t).takeWhile((x) -> x?.pick(1)).flatMap (x) ->
+      z = @zip(t).takeWhile((x) -> x?.pick(1)?).flatMap (x) ->
         a = x.first()
         x.pick(1).map (y) -> new Seq a, -> y
       new Seq z, => @cantorFold t, remaining.rest()
@@ -181,7 +189,7 @@ class Seq
   cantorRuns: ->
     if @rest()
       @first().cantorFold null, @rest().cantorRuns()
-    else:
+    else
       @first().map (s) -> new Seq(new Seq(s))
 
   cantor: (others...) -> @sequentializeWith(others...).cantorRuns().flatten()
@@ -250,5 +258,7 @@ if module? and not module.parent
   print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
   print "Cartesian:     " +
     fib.take(2).cartesian(primes.take(2), [0]).map(Seq.toArray)
-  #print "Cantor:        " +
-  #  primes.cantor(primes, primes).take(5).map(Seq.toArray)
+  print "Cantor:        " +
+    primes.cantor(primes, primes).take(5).map(Seq.toArray)
+  print "Distinct:      #{fib.interleave(primes).distinct().take(10)}"
+  print ""
