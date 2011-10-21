@@ -20,7 +20,7 @@ class Seq
         if n == 1
           s = args[0]()
         else
-          s = seq(args[...n-2]).concat(new Seq(args[n-2...]))
+          s = seq(args[...n-2]).concat(new Seq(args[n-2...]...))
       else
         s = seq args
 
@@ -59,7 +59,7 @@ class Seq
 
   @iterate: (x, f) -> new Seq x, => @iterate f(x), f
 
-  toString: -> @toArray().join ' '
+  toString: -> @toArray().join ' -> '
 
   size: ->
     step = (s, n) -> if s then -> step s.rest(), n + 1 else n
@@ -132,6 +132,20 @@ class Seq
 
   zip: (others...) -> @sequentializeWith(others...).zipSeq()
 
+  combine: (op, others...) -> @zip(others...).map (s) -> s?.fold(op)
+
+  add: (others...) -> @combine ((a, b) -> a + b), others...
+
+  sub: (others...) -> @combine ((a, b) -> a - b), others...
+
+  mul: (others...) -> @combine ((a, b) -> a * b), others...
+
+  div: (others...) -> @combine ((a, b) -> a / b), others...
+
+  eq: (others...) ->
+    @zip(others...).forall (s) ->
+      if s then s.forall (x) -> x == s.first() else true
+
   lazyConcat: (s) ->
     new Seq @first(), => if @rest() then @rest().lazyConcat s else s()
 
@@ -142,9 +156,29 @@ class Seq
 
   concat: (others...) -> @sequentializeWith(others...).flatten()
 
+  interleaveSeq: ->
+    alive = @select (s) -> s?
+    alive?.map(Seq.first).lazyConcat(-> alive.map(Seq.rest).interleaveSeq())
+
+  cartesianSeq: ->
+    if @rest()
+      @first().flatMap (s) => @rest().cartesianSeq().map (t) -> new Seq s, -> t
+    else
+      @first().map (s) -> new Seq s
+
+  cartesian: (others...) -> @sequentializeWith(others...).cartesianSeq()
+
+  interleave: (others...) -> @sequentializeWith(others...).interleaveSeq()
+
   subseqs: -> new Seq this, => @rest()?.subseqs()
 
   consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
+
+
+for k, v of Seq.prototype
+  do ->
+    key = k
+    Seq[key] = (s, args...) -> Seq::[key].apply(s, args)
 
 
 if exports
@@ -153,30 +187,50 @@ if exports
 
 
 if module? and not module.parent
-  s = seq "the quick brown fox jumps over".split(/\s+/)
-  console.log "Sequence:      #{s}"
-  console.log "Forced:        #{s.forced()}"
-  console.log "Mangled last:  " + (s.subseqs().map((sub) ->
-    if sub.rest() then sub.first() else sub.first().toUpperCase()))
-  console.log "Size:          #{s.size()}"
-  console.log "Last:          #{s.last()}"
-  console.log "Runs of 3:     #{s.consec(3).drop(3)}"
-  console.log "Letter counts: #{s.map((w) -> [w, w.length]).take(4)}"
-  console.log "Repeat third:  #{Seq.constant(s.pick 2).take(5)}"
-  console.log "Cycle:         #{s.cycle().take(8)}"
-  console.log "Start at fox:  #{s.dropUntil (x) -> x == 'fox'}"
-  console.log "Five letters:  #{s.select (x) -> x.length == 5}"
-  console.log "First with r:  #{s.find (x) -> 'r' in x}"
-  console.log "All 3 letters: #{s.forall (x) -> x.length == 3}"
-  console.log "Reverse:       #{s.reverse()}"
-  console.log "Min and max:   #{s.min()}, #{s.max()}"
-  console.log "With indexes:  #{s.zip('abcdef').map((s) -> s.toArray()).drop(3)}"
-  console.log
-  console.log "Number range:  #{Seq.range 10, 20}"
-  console.log "Its sum:       #{Seq.range(10, 20).sum()}"
-  console.log "Its product:   #{Seq.range(10, 20).product()}"
-  console.log "flatMap:       #{Seq.range(4, 1).flatMap (n) -> Seq.range(1, n)}"
-  console.log "Iterate:       #{Seq.iterate(1, (n) -> 2 * n).take(10)}"
-  console.log
+  print = console.log
 
-  fib = new Seq 0, 1, -> fib.rest().plus + fib
+  s = seq "the quick brown fox jumps over".split(/\s+/)
+  print "Sequence:      #{s}"
+  print "Forced:        #{s.forced()}"
+  print "Mangle last:   " + (s.subseqs().map((sub) ->
+    if sub.rest() then sub.first() else sub.first().toUpperCase()))
+  print "Size:          #{s.size()}"
+  print "Last:          #{s.last()}"
+  print "Runs of 3:     #{s.consec(3).drop(3)}"
+  print "Letter counts: #{s.map((w) -> [w, w.length]).take(4)}"
+  print "Repeat third:  #{Seq.constant(s.pick 2).take(5)}"
+  print "Cycle:         #{s.cycle().take(8)}"
+  print "Start at fox:  #{s.dropUntil (x) -> x == 'fox'}"
+  print "Five letters:  #{s.select (x) -> x.length == 5}"
+  print "First with r:  #{s.find (x) -> 'r' in x}"
+  print "All 3 letters: #{s.forall (x) -> x.length == 3}"
+  print "Reverse:       #{s.reverse()}"
+  print "Min and max:   #{s.min()}, #{s.max()}"
+  print "With indexes:  #{s.zip('abcdefg').map(Seq.toArray).drop(3)}"
+  print ""
+  print "Number range:  #{Seq.range 10, 20}"
+  print "Its sum:       #{Seq.range(10, 20).sum()}"
+  print "Its product:   #{Seq.range(10, 20).product()}"
+  print "flat_map:      #{Seq.range(4, 1).flatMap (n) -> Seq.range(1, n)}"
+  print "Iterate:       #{Seq.iterate(1, (n) -> 2 * n).take(10)}"
+  print ""
+
+  fib = new Seq 0, 1, -> fib.rest().add fib
+  print "Fibonacci:     #{fib.take(12)}"
+  print "Compare:       #{fib.take(10).eq [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
+  print "Compare:       #{fib.take(10).eq [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
+  print ""
+  print "No first:      #{new Seq -> s}"
+  print "One first:     #{new Seq 1, -> s}"
+  print "Two firsts:    #{new Seq 1, 2, -> s}"
+  print "Three firsts:  #{new Seq 1, 2, 3, -> s}"
+  print ""
+
+  primes = Seq.upFrom(2).select (n) ->
+    n < 4 or primes.takeWhile((m) -> m * m <= n).forall((m) -> n % m > 0)
+  print "Prime numbers: #{primes.take(10)}"
+  print ""
+  print "Concatenation: #{s.take(3).concat fib.take(2), primes.take(3)}"
+  print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
+  print "Cartesian:     " + fib.take(2).cartesian(primes.take(2), [0]).
+    map(Seq.toArray)
