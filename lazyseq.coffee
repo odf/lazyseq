@@ -198,6 +198,22 @@ class Seq
 
   consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
 
+  @treeWalk: (root, nextLevel) ->
+    nextStep = (path) ->
+      if path
+        top = path.first()
+        s = nextLevel top.first()
+        if s
+          new Seq s, -> path
+        else if top.rest()
+          new Seq top.rest(), -> path.rest()
+        else if path.rest()
+          backtrack = path.rest().dropUntil(Seq.rest)
+          new Seq(backtrack.first().rest(), -> backtrack.rest()) if backtrack
+
+    Seq.iterate(new Seq(new Seq(root)), nextStep).takeWhile((x) -> x?).
+      map (s) -> s.first().first()
+
 
 for k, v of Seq.prototype
   do ->
@@ -262,3 +278,15 @@ if module? and not module.parent
     primes.cantor(primes, primes).take(5).map(Seq.toArray)
   print "Distinct:      #{fib.interleave(primes).distinct().take(10)}"
   print ""
+
+  permutations = (degree) ->
+    nextLevel = (perm) ->
+      i = perm.indexOf null
+      unless i < 0
+        Seq.range(1, degree).select((n) -> n not in perm).
+          map (to) -> perm[...i].concat [to], perm[i+1...]
+
+    Seq.treeWalk([0].concat(null for i in [1..degree]), nextLevel).
+      map((p) -> p[1...]).select (p) -> null not in p
+
+  print "Permutations:  #{permutations 4}"
