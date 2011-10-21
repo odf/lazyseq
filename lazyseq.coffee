@@ -158,7 +158,9 @@ class Seq
 
   interleaveSeq: ->
     alive = @select (s) -> s?
-    alive?.map(Seq.first).lazyConcat(-> alive.map(Seq.rest).interleaveSeq())
+    alive?.map(Seq.first).lazyConcat -> alive.map(Seq.rest).interleaveSeq()
+
+  interleave: (others...) -> @sequentializeWith(others...).interleaveSeq()
 
   cartesianSeq: ->
     if @rest()
@@ -168,7 +170,21 @@ class Seq
 
   cartesian: (others...) -> @sequentializeWith(others...).cartesianSeq()
 
-  interleave: (others...) -> @sequentializeWith(others...).interleaveSeq()
+  cantorFold: (back, remaining) ->
+    if remaining
+      t = new Seq remaining.first(), -> back
+      z = @zip(t).takeWhile((x) -> x?.pick(1)).flatMap (x) ->
+        a = x.first()
+        x.pick(1).map (y) -> new Seq a, -> y
+      new Seq z, => @cantorFold t, remaining.rest()
+
+  cantorRuns: ->
+    if @rest()
+      @first().cantorFold null, @rest().cantorRuns()
+    else:
+      @first().map (s) -> new Seq(new Seq(s))
+
+  cantor: (others...) -> @sequentializeWith(others...).cantorRuns().flatten()
 
   subseqs: -> new Seq this, => @rest()?.subseqs()
 
@@ -192,8 +208,8 @@ if module? and not module.parent
   s = seq "the quick brown fox jumps over".split(/\s+/)
   print "Sequence:      #{s}"
   print "Forced:        #{s.forced()}"
-  print "Mangle last:   " + (s.subseqs().map((sub) ->
-    if sub.rest() then sub.first() else sub.first().toUpperCase()))
+  print "Mangle last:   " + s.subseqs().map (sub) ->
+    if sub.rest() then sub.first() else sub.first().toUpperCase()
   print "Size:          #{s.size()}"
   print "Last:          #{s.last()}"
   print "Runs of 3:     #{s.consec(3).drop(3)}"
@@ -232,5 +248,7 @@ if module? and not module.parent
   print ""
   print "Concatenation: #{s.take(3).concat fib.take(2), primes.take(3)}"
   print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
-  print "Cartesian:     " + fib.take(2).cartesian(primes.take(2), [0]).
-    map(Seq.toArray)
+  print "Cartesian:     " +
+    fib.take(2).cartesian(primes.take(2), [0]).map(Seq.toArray)
+  #print "Cantor:        " +
+  #  primes.cantor(primes, primes).take(5).map(Seq.toArray)
