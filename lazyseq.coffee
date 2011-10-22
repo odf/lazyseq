@@ -159,7 +159,7 @@ class Seq
 
   div: (others...) -> @combine ((a, b) -> a / b), others...
 
-  eq: (others...) ->
+  equals: (others...) ->
     @zip(others...).forall (s) ->
       if s then s.forall (x) -> x == s.first() else true
 
@@ -266,8 +266,10 @@ if module? and not module.parent
 
   fib = new Seq 0, 1, -> fib.rest().add fib
   print "Fibonacci:     #{fib.take(12)}"
-  print "Compare:       #{fib.take(10).eq [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]}"
-  print "Compare:       #{fib.take(10).eq [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]}"
+  print "Compare:       " +
+    fib.take(10).equals [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
+  print "Compare:       " +
+    fib.take(10).equals [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]
   print ""
   print "No first:      #{new Seq -> s}"
   print "One first:     #{new Seq 1, -> s}"
