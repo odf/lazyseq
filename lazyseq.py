@@ -381,13 +381,12 @@ if __name__ == "__main__":
     print
 
     def permutations(degree):
-        def next_level(perm):
-            if None in perm[1:]:
-                i = perm.index(None, 1)
+        def choices(perm):
+            if 0 in perm:
+                i = perm.index(0)
                 return Seq.range(1, degree).select(lambda n: not n in perm).map(
-                    lambda to: perm[:i] + [to] + perm[i+1:])
+                    lambda n: perm[:i] + [n] + perm[i+1:])
 
-        return Seq.tree_walk([None] * (degree + 1), next_level).map(
-            lambda p: p[1:]).select(lambda p: not None in p)
+        return Seq.tree_walk([0] * degree, choices).select(lambda p: not 0 in p)
 
     print "Permutations: ", permutations(4)

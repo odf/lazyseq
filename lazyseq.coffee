@@ -278,13 +278,12 @@ if module? and not module.parent
   print ""
 
   permutations = (degree) ->
-    nextLevel = (perm) ->
-      i = perm.indexOf null
+    choices = (p) ->
+      i = p.indexOf 0
       unless i < 0
-        Seq.range(1, degree).select((n) -> n not in perm).
-          map (to) -> perm[...i].concat [to], perm[i+1...]
+        Seq.range(1, degree).select((n) -> n not in p).
+          map (n) -> p[...i].concat [n], p[i+1...]
 
-    Seq.treeWalk([0].concat(null for i in [1..degree]), nextLevel).
-      map((p) -> p[1...]).select (p) -> null not in p
+    Seq.treeWalk(0 for i in [1..degree], choices).select (p) -> 0 not in p
 
   print "Permutations:  #{permutations 4}"

@@ -406,16 +406,15 @@ if __FILE__ == $0
   puts
 
   def permutations(degree)
-    next_level = lambda { |perm|
-      i = perm.index nil
+    choices = lambda { |perm|
+      i = perm.index 0
       unless i.nil?
-        Seq.range(1, degree).select { |n| not perm.include? n }.map { |to|
-          perm[0..i-1] + [to] + perm[i+1..-1] }
+        Seq.range(1, degree).select { |n| not perm.include? n }.map { |n|
+          perm[0...i] + [n] + perm[i+1..-1] }
       end
     }
 
-    Seq.tree_walk([0] + Array.new(degree), next_level).map { |p|
-      p[1..-1] }.select { |p| not p.include? nil }
+    Seq.tree_walk([0] * degree, choices).select { |p| not p.include? 0 }
   end
 
   puts "Permutations:  #{permutations 4}"
