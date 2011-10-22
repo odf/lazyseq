@@ -1,3 +1,12 @@
+identity =           (x) -> x
+defined  =           (x) -> x?
+compose  = (f, g) -> (x) -> f g x
+option   = (f)    -> (x) -> f x if x?
+curry    = (f, x) -> (y) -> f x, y
+rcurry   = (f, y) -> (x) -> f x, y
+twice    = (f)    -> (x) -> f f x
+
+
 bounce = (val) -> val = val() while typeof val == 'function'; val
 
 seq = (source) ->
@@ -132,9 +141,9 @@ class Seq
   max: -> @fold (a, b) -> if b > a then b else a
 
   zipSeq: ->
-    firsts = @map (s) -> s?.first()
-    if firsts.dropUntil((s) -> s?)
-      new Seq firsts, => @map((s) -> s?.rest()).zipSeq()
+    firsts = @map Seq.first
+    if firsts.dropUntil defined
+      new Seq firsts, => @map(option(Seq.rest)).zipSeq()
 
   sequentializeWith: (args...) -> new Seq this, -> seq(args).map(seq) if args
 
@@ -165,7 +174,7 @@ class Seq
   concat: (others...) -> @sequentializeWith(others...).flatten()
 
   interleaveSeq: ->
-    alive = @select (s) -> s?
+    alive = @select defined
     alive?.map(Seq.first).lazyConcat -> alive.map(Seq.rest).interleaveSeq()
 
   interleave: (others...) -> @sequentializeWith(others...).interleaveSeq()
@@ -212,7 +221,7 @@ class Seq
           new Seq(backtrack.first().rest(), -> backtrack.rest()) if backtrack
 
     Seq.iterate(new Seq(new Seq(root)), nextStep).takeWhile((x) -> x?).
-      map (s) -> s.first().first()
+      map twice Seq.first
 
 
 for k, v of Seq.prototype
