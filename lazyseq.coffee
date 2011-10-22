@@ -220,8 +220,8 @@ class Seq
           backtrack = path.rest().dropUntil(Seq.rest)
           new Seq(backtrack.first().rest(), -> backtrack.rest()) if backtrack
 
-    Seq.iterate(new Seq(new Seq(root)), nextStep).takeWhile((x) -> x?).
-      map twice Seq.first
+    Seq.iterate(new Seq(new Seq(root)), nextStep).takeWhile(defined).
+      map(twice Seq.first)
 
 
 for k, v of Seq.prototype

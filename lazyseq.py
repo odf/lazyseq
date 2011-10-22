@@ -1,6 +1,9 @@
 def identity(x):
     return x
 
+def defined(x):
+    return x is not None
+
 def compose(f, g):
     return lambda x: f(g(x))
 
@@ -212,9 +215,8 @@ class Seq:
 
     def zip_seq(self):
         firsts = self.map(option(Seq.first))
-        if not firsts.forall(lambda s: s is None):
-            return Seq(firsts,
-                       lambda : self.map(option(Seq.rest)).zip_seq())
+        if firsts.drop_until(defined):
+            return Seq(firsts, lambda : self.map(option(Seq.rest)).zip_seq())
 
     def sequentialize_with(self, *args):
         return Seq(self, lambda: args and seq(args).map(seq))
@@ -279,7 +281,7 @@ class Seq:
         return self.sequentialize_with(*others).flatten()
 
     def interleave_seq(self):
-        alive = self.select(lambda s: s is not None)
+        alive = self.select(defined)
         if alive:
             return alive.map(Seq.first).lazy_concat(
                 lambda : alive.map(Seq.rest).interleave_seq())
@@ -336,7 +338,7 @@ class Seq:
                         return Seq(backtrack.first().rest(),
                             lambda : backtrack.rest())
 
-        return Seq.iterate(Seq(Seq(root)), next_step).take_while(identity).map(
+        return Seq.iterate(Seq(Seq(root)), next_step).take_while(defined).map(
             twice(Seq.first))
 
 
