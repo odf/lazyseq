@@ -324,22 +324,11 @@ class Seq:
 
     @classmethod
     def tree_walk(cls, root, next_level):
-        def next_step(path):
-            if path:
-                top = path.first()
-                s = next_level(top.first())
-                if s:
-                    return Seq(s, lambda : path)
-                elif top.rest():
-                    return Seq(top.rest(), lambda : path.rest())
-                elif path.rest():
-		    backtrack = path.rest().drop_until(Seq.rest)
-                    if backtrack:
-                        return Seq(backtrack.first().rest(),
-                            lambda : backtrack.rest())
-
-        return Seq.iterate(Seq(Seq(root)), next_step).take_while(defined).map(
-            twice(Seq.first))
+        def tail():
+            s = next_level(root)
+            if s:
+                return s.flat_map(lambda t: Seq.tree_walk(t, next_level))
+        return Seq(root, tail)
 
 
 if __name__ == "__main__":

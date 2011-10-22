@@ -348,23 +348,10 @@ class Seq
   end
 
   def self.tree_walk(root, next_level)
-    next_step = lambda { |path|
-      if path
-        top = path.first
-        s = next_level.call top.first
-        if s
-          Seq.new(s) { path }
-        elsif top.rest
-          Seq.new(top.rest) { path.rest }
-        elsif path.rest
-          backtrack = path.rest.drop_until { |s| s.rest }
-          Seq.new(backtrack.first.rest) { backtrack.rest } if backtrack
-        end
-      end
+    Seq.new(root) {
+      s = next_level.call root
+      s.flat_map { |t| Seq.tree_walk t, next_level } if s
     }
-
-    Seq.iterate(Seq.new(Seq.new(root)), &next_step).take_while { |x|
-      x }.map { |x| x.first.first }
   end
 end
 

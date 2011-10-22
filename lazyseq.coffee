@@ -208,20 +208,7 @@ class Seq
   consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
 
   @treeWalk: (root, nextLevel) ->
-    nextStep = (path) ->
-      if path
-        top = path.first()
-        s = nextLevel top.first()
-        if s
-          new Seq s, -> path
-        else if top.rest()
-          new Seq top.rest(), -> path.rest()
-        else if path.rest()
-          backtrack = path.rest().dropUntil(Seq.rest)
-          new Seq(backtrack.first().rest(), -> backtrack.rest()) if backtrack
-
-    Seq.iterate(new Seq(new Seq(root)), nextStep).takeWhile(defined).
-      map(twice Seq.first)
+    new Seq root, => nextLevel(root)?.flatMap (s) => @treeWalk s, nextLevel
 
 
 for k, v of Seq.prototype
