@@ -22,9 +22,9 @@ or in Python:
 
 and finally in Coffeescript:
 
-    fib = new Seq 0, 1, -> fib.rest().add fib
+    fib = seq.build 0, 1, -> fib.rest().add fib
     console.log "Fibonacci numbers: #{fib.take 10} ..."
 
-    primes = Seq.upFrom(2).select (n) ->
+    primes = seq.upFrom(2).select (n) ->
       n < 4 or primes.takeWhile((m) -> m * m <= n).forall((m) -> n % m > 0)
     console.log "Prime numbers: #{primes.take 10} ..."

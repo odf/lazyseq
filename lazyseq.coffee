@@ -9,32 +9,9 @@ twice    = (f)    -> (x) -> f f x
 
 bounce = (val) -> val = val() while typeof val == 'function'; val
 
-seq = (source) ->
-  if source.constructor == Seq
-    source
-  else
-    Seq.fromArray source
-
 
 class Seq
-  constructor: (args...) ->
-    if args.length == 2 and typeof args[1] == 'function'
-      [@__first, @__rest] = args
-    else
-      throw new Error("Use null for empty sequences") if args.length == 0
-
-      n = args.length
-
-      if typeof args[n-1] == 'function'
-        if n == 1
-          s = args[0]()
-        else
-          s = seq(args[...n-2]).concat(new Seq(args[n-2...]...))
-      else
-        s = seq args
-
-      @__first = s.first()
-      @__rest = -> s.rest()
+  constructor: (@__first, @__rest) ->
 
   first: -> @__first
 
@@ -51,23 +28,6 @@ class Seq
     bounce step this
     a
 
-  @fromArray: (a, i = 0) ->
-    if i < a.length then new Seq a[i], => @fromArray a, i+1
-
-  @upFrom: (start) -> new Seq start, => @upFrom start + 1
-
-  @downFrom: (start) -> new Seq start, => @downFrom start - 1
-
-  @range: (start, limit) ->
-    if limit >= start
-      @upFrom(start).takeWhile (x) -> x <= limit
-    else
-      @downFrom(start).takeWhile (x) -> x >= limit
-
-  @constant: (val) -> new Seq val, => @constant val
-
-  @iterate: (x, f) -> new Seq x, => @iterate f(x), f
-
   toString: -> @toArray().join ' -> '
 
   size: ->
@@ -81,15 +41,15 @@ class Seq
   reverse: ->
     step = (rev, s) ->
       if s
-        -> step new Seq(s.first(), -> rev), s.rest()
+        -> step seq.build(s.first(), -> rev), s.rest()
       else
         rev
     bounce step null, this
 
-  take: (n) -> if n > 0 then new Seq @first(), => @rest()?.take n-1
+  take: (n) -> if n > 0 then seq.build @first(), => @rest()?.take n-1
 
   takeWhile: (pred) ->
-    if pred @first() then new Seq @first(), => @rest()?.takeWhile pred
+    if pred @first() then seq.build @first(), => @rest()?.takeWhile pred
 
   drop: (n) ->
     step = (s, n) -> if s and n > 0 then -> step s.rest(), n-1 else s
@@ -104,11 +64,11 @@ class Seq
   cycle: -> @cycleFrom this
 
   cycleFrom: (s) ->
-    if s then new Seq s.first(), => @cycleFrom s.rest() else @cycle()
+    if s then seq.build s.first(), => @cycleFrom s.rest() else @cycle()
 
   select: (pred) ->
     if pred @first()
-      new Seq @first(), => @rest()?.select(pred)
+      seq.build @first(), => @rest()?.select(pred)
     else if @rest()
       @rest().dropUntil(pred)?.select(pred)
 
@@ -116,7 +76,7 @@ class Seq
     if back?.contains @first()
       @dropUntil((x) -> not back.contains x)?.distinct(back)
     else
-      new Seq @first(), => @rest()?.distinct new Seq @first(), -> back
+      seq.build @first(), => @rest()?.distinct seq.build @first(), -> back
 
   find: (pred) -> @dropUntil(pred)?.first()
 
@@ -124,7 +84,7 @@ class Seq
 
   forall: (pred) -> not @dropUntil (x) -> not pred(x)
 
-  map: (f) -> new Seq f(@first()), => @rest()?.map(f)
+  map: (f) -> seq.build f(@first()), => @rest()?.map(f)
 
   reduce: (start, op) ->
     step = (val, s) -> if s then -> step op(val, s.first()), s.rest() else val
@@ -141,11 +101,11 @@ class Seq
   max: -> @fold (a, b) -> if b > a then b else a
 
   zipSeq: ->
-    firsts = @map Seq.first
+    firsts = @map seq.first
     if firsts.dropUntil defined
-      new Seq firsts, => @map(option(Seq.rest)).zipSeq()
+      seq.build firsts, => @map(option(seq.rest)).zipSeq()
 
-  sequentializeWith: (args...) -> new Seq this, -> seq(args).map(seq) if args
+  sequentializeWith: (args...) -> seq.build this, -> seq(args).map(seq) if args
 
   zip: (others...) -> @sequentializeWith(others...).zipSeq()
 
@@ -164,7 +124,7 @@ class Seq
       if s then s.forall (x) -> x == s.first() else true
 
   lazyConcat: (s) ->
-    new Seq @first(), => if @rest() then @rest().lazyConcat s else s()
+    seq.build @first(), => if @rest() then @rest().lazyConcat s else s()
 
   flatten: ->
     if @rest() then @first().lazyConcat => @rest().flatten() else @first()
@@ -175,51 +135,87 @@ class Seq
 
   interleaveSeq: ->
     alive = @select defined
-    alive?.map(Seq.first).lazyConcat -> alive.map(Seq.rest).interleaveSeq()
+    alive?.map(seq.first).lazyConcat -> alive.map(seq.rest).interleaveSeq()
 
   interleave: (others...) -> @sequentializeWith(others...).interleaveSeq()
 
   cartesianSeq: ->
     if @rest()
-      @first().flatMap (s) => @rest().cartesianSeq().map (t) -> new Seq s, -> t
+      @first().flatMap (s) => @rest().cartesianSeq().map (t) -> seq.build s, -> t
     else
-      @first().map (s) -> new Seq s
+      @first().map (s) -> seq.build s
 
   cartesian: (others...) -> @sequentializeWith(others...).cartesianSeq()
 
   cantorFold: (back, remaining) ->
     if remaining
-      t = new Seq remaining.first(), -> back
+      t = seq.build remaining.first(), -> back
       z = @zip(t).takeWhile((x) -> x?.pick(1)?).flatMap (x) ->
         a = x.first()
-        x.pick(1).map (y) -> new Seq a, -> y
-      new Seq z, => @cantorFold t, remaining.rest()
+        x.pick(1).map (y) -> seq.build a, -> y
+      seq.build z, => @cantorFold t, remaining.rest()
 
   cantorRuns: ->
     if @rest()
       @first().cantorFold null, @rest().cantorRuns()
     else
-      @first().map (s) -> new Seq(new Seq(s))
+      @first().map (s) -> seq.build(seq.build(s))
 
   cantor: (others...) -> @sequentializeWith(others...).cantorRuns().flatten()
 
-  subseqs: -> new Seq this, => @rest()?.subseqs()
+  subseqs: -> seq.build this, => @rest()?.subseqs()
 
   consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
 
-  @treeWalk: (root, nextLevel) ->
-    new Seq root, => nextLevel(root)?.flatMap (s) => @treeWalk s, nextLevel
+
+seq = (source) ->
+  if source.constructor == Seq
+    source
+  else
+    seq.fromArray source
+
+seq.build = (args...) ->
+  n = args.length
+  throw new Error("Use null for empty sequences") if n == 0
+
+  if typeof args[n-1] == 'function'
+    if n == 1
+      args[0]()
+    else if n == 2
+      new Seq args...
+    else
+      seq(args[...n-2]).concat(new Seq(args[n-2...]...))
+  else
+    seq args
+
+seq.fromArray = (a, i = 0) ->
+  if i < a.length then seq.build a[i], => seq.fromArray a, i+1
+
+seq.upFrom = (start) -> seq.build start, => seq.upFrom start + 1
+
+seq.downFrom = (start) -> seq.build start, => seq.downFrom start - 1
+
+seq.range = (start, limit) ->
+  if limit >= start
+    seq.upFrom(start).takeWhile (x) -> x <= limit
+  else
+    seq.downFrom(start).takeWhile (x) -> x >= limit
+
+seq.constant = (val) -> seq.build val, => seq.constant val
+
+seq.iterate = (x, f) -> seq.build x, => seq.iterate f(x), f
+
+seq.treeWalk = (root, nextLevel) ->
+  seq.build root, => nextLevel(root)?.flatMap (s) => seq.treeWalk s, nextLevel
 
 
 for k, v of Seq.prototype
   do ->
     key = k
-    Seq[key] = (s, args...) -> Seq::[key].apply(s, args)
+    seq[key] = (s, args...) -> Seq::[key].apply(s, args)
 
 
-if exports
-  exports.seq = seq
-  exports.Seq = Seq
+(exports &= this.lazyseq &= {}).seq = seq
 
 
 if module? and not module.parent
@@ -234,7 +230,7 @@ if module? and not module.parent
   print "Last:          #{s.last()}"
   print "Runs of 3:     #{s.consec(3).drop(3)}"
   print "Letter counts: #{s.map((w) -> [w, w.length]).take(4)}"
-  print "Repeat third:  #{Seq.constant(s.pick 2).take(5)}"
+  print "Repeat third:  #{seq.constant(s.pick 2).take(5)}"
   print "Cycle:         #{s.cycle().take(8)}"
   print "Start at fox:  #{s.dropUntil (x) -> x == 'fox'}"
   print "Five letters:  #{s.select (x) -> x.length == 5}"
@@ -242,38 +238,38 @@ if module? and not module.parent
   print "All 3 letters: #{s.forall (x) -> x.length == 3}"
   print "Reverse:       #{s.reverse()}"
   print "Min and max:   #{s.min()}, #{s.max()}"
-  print "With indexes:  #{s.zip('abcdefg').map(Seq.toArray).drop(3)}"
+  print "With indexes:  #{s.zip('abcdefg').map(seq.toArray).drop(3)}"
   print ""
-  print "Number range:  #{Seq.range 10, 20}"
-  print "Its sum:       #{Seq.range(10, 20).sum()}"
-  print "Its product:   #{Seq.range(10, 20).product()}"
-  print "flat_map:      #{Seq.range(4, 1).flatMap (n) -> Seq.range(1, n)}"
-  print "Iterate:       #{Seq.iterate(1, (n) -> 2 * n).take(10)}"
+  print "Number range:  #{seq.range 10, 20}"
+  print "Its sum:       #{seq.range(10, 20).sum()}"
+  print "Its product:   #{seq.range(10, 20).product()}"
+  print "flat_map:      #{seq.range(4, 1).flatMap (n) -> seq.range(1, n)}"
+  print "Iterate:       #{seq.iterate(1, (n) -> 2 * n).take(10)}"
   print ""
 
-  fib = new Seq 0, 1, -> fib.rest().add fib
+  fib = seq.build 0, 1, -> fib.rest().add fib
   print "Fibonacci:     #{fib.take(12)}"
   print "Compare:       " +
     fib.take(10).equals [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
   print "Compare:       " +
     fib.take(10).equals [0, 1, 1, 2, 3, 5, 8.2, 13, 21, 34]
   print ""
-  print "No first:      #{new Seq -> s}"
-  print "One first:     #{new Seq 1, -> s}"
-  print "Two firsts:    #{new Seq 1, 2, -> s}"
-  print "Three firsts:  #{new Seq 1, 2, 3, -> s}"
+  print "No first:      #{seq.build -> s}"
+  print "One first:     #{seq.build 1, -> s}"
+  print "Two firsts:    #{seq.build 1, 2, -> s}"
+  print "Three firsts:  #{seq.build 1, 2, 3, -> s}"
   print ""
 
-  primes = Seq.upFrom(2).select (n) ->
+  primes = seq.upFrom(2).select (n) ->
     n < 4 or primes.takeWhile((m) -> m * m <= n).forall((m) -> n % m > 0)
   print "Prime numbers: #{primes.take(10)}"
   print ""
   print "Concatenation: #{s.take(3).concat fib.take(2), primes.take(3)}"
   print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
   print "Cartesian:     " +
-    fib.take(2).cartesian(primes.take(2), [0]).map(Seq.toArray)
+    fib.take(2).cartesian(primes.take(2), [0]).map(seq.toArray)
   print "Cantor:        " +
-    primes.cantor(primes, primes).take(5).map(Seq.toArray)
+    primes.cantor(primes, primes).take(5).map(seq.toArray)
   print "Distinct:      #{fib.interleave(primes).distinct().take(10)}"
   print ""
 
@@ -281,9 +277,9 @@ if module? and not module.parent
     choices = (p) ->
       i = p.indexOf 0
       unless i < 0
-        Seq.range(1, degree).select((n) -> n not in p).
+        seq.range(1, degree).select((n) -> n not in p).
           map (n) -> p[...i].concat [n], p[i+1...]
 
-    Seq.treeWalk(0 for i in [1..degree], choices).select (p) -> 0 not in p
+    seq.treeWalk(0 for i in [1..degree], choices).select (p) -> 0 not in p
 
   print "Permutations:  #{permutations 4}"
