@@ -136,8 +136,7 @@ class Seq
     @zip(others...).forall (s) ->
       if s then s.forall (x) -> x == s.first() else true
 
-  lazyConcat: (s) ->
-    seq.build @first(), => if @rest() then @rest().lazyConcat s else s()
+  lazyConcat: (s) -> seq.build @first(), => @rest()?.lazyConcat(s) or s()
 
   flatten: ->
     if @rest()
@@ -187,7 +186,7 @@ class Seq
     x = @first()
     head = @rest()?.select((y) -> y <= x)?.sort()
     tail = seq.build x, => @rest()?.select((y) -> y > x)?.sort()
-    if head then head.concat tail else tail
+    head?.concat(tail) or tail
 
 
 seq = (source) ->
