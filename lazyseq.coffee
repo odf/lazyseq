@@ -22,6 +22,8 @@ class Seq
     bounce step @rest()
     this
 
+  toSeq: -> this
+
   toArray: ->
     a = []
     step = (s) -> if s then a.push s.first(); -> step s.rest()
@@ -169,8 +171,8 @@ class Seq
 
 
 seq = (source) ->
-  if source.constructor == Seq
-    source
+  if typeof source.toSeq == 'function'
+    source.toSeq()
   else
     seq.fromArray source
 
