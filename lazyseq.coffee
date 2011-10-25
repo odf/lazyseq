@@ -35,7 +35,12 @@ class Seq
       bounce step this
       out
 
-  toString: -> @into([]).join ' -> '
+  toString: (limit = 10) ->
+    [t, more] = if limit > 0
+      [@take(limit), @pick(limit)?]
+    else
+      [this, false]
+    t.into([]).join(' -> ') + if more then ' -> ...' else ''
 
   size: ->
     step = (s, n) -> if s then -> step s.rest(), n + 1 else n
@@ -248,7 +253,7 @@ if module? and not module.parent
   print "Min and max:   #{s.min()}, #{s.max()}"
   print "With indexes:  #{s.zip('abcdefg').map(array).drop(3)}"
   print ""
-  print "Number range:  #{seq.range 10, 20}"
+  print "Number range:  #{seq.range(10, 20).toString(11)}"
   print "Its sum:       #{seq.range(10, 20).sum()}"
   print "Its product:   #{seq.range(10, 20).product()}"
   print "flat_map:      #{seq.range(4, 1).flatMap (n) -> seq.range(1, n)}"
@@ -256,7 +261,7 @@ if module? and not module.parent
   print ""
 
   fib = seq.build 0, 1, -> fib.rest().add fib
-  print "Fibonacci:     #{fib.take(12)}"
+  print "Fibonacci:     #{fib.toString(11)}"
   print "Compare:       " +
     fib.take(10).equals [0, 1, 1, 2, 3, 5, 8, 13, 21, 34]
   print "Compare:       " +
@@ -270,7 +275,7 @@ if module? and not module.parent
 
   primes = seq.upFrom(2).select (n) ->
     n < 4 or primes.takeWhile((m) -> m * m <= n).forall((m) -> n % m > 0)
-  print "Prime numbers: #{primes.take(10)}"
+  print "Prime numbers: #{primes.toString(10)}"
   print ""
   print "Concatenation: #{s.take(3).concat fib.take(2), primes.take(3)}"
   print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
@@ -288,4 +293,4 @@ if module? and not module.parent
 
     seq.treeWalk(0 for i in [1..degree], choices).select (p) -> 0 not in p
 
-  print "Permutations:  #{permutations 4}"
+  print "Permutations:  #{permutations(4).toString(0)}"
