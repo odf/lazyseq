@@ -14,6 +14,7 @@ All 3 letters: false
 Reverse:       over -> jumps -> fox -> brown -> quick -> the
 Min and max:   brown, the
 With indexes:  fox,d -> jumps,e -> over,f -> ,g
+Sorted:        brown -> fox -> jumps -> over -> quick -> the
 
 Number range:  10 -> 11 -> 12 -> 13 -> 14 -> 15 -> 16 -> 17 -> 18 -> 19 -> 20
 Its sum:       165
@@ -21,7 +22,7 @@ Its product:   6704425728000
 flat_map:      1 -> 2 -> 3 -> 4 -> 1 -> 2 -> 3 -> 1 -> 2 -> 1
 Iterate:       1 -> 2 -> 4 -> 8 -> 16 -> 32 -> 64 -> 128 -> 256 -> 512
 
-Fibonacci:     0 -> 1 -> 1 -> 2 -> 3 -> 5 -> 8 -> 13 -> 21 -> 34 -> 55 -> 89
+Fibonacci:     0 -> 1 -> 1 -> 2 -> 3 -> 5 -> 8 -> 13 -> 21 -> 34 -> 55 -> ...
 Compare:       true
 Compare:       false
 
@@ -30,7 +31,7 @@ One first:     1 -> the -> quick -> brown -> fox -> jumps -> over
 Two firsts:    1 -> 2 -> the -> quick -> brown -> fox -> jumps -> over
 Three firsts:  1 -> 2 -> 3 -> the -> quick -> brown -> fox -> jumps -> over
 
-Prime numbers: 2 -> 3 -> 5 -> 7 -> 11 -> 13 -> 17 -> 19 -> 23 -> 29
+Prime numbers: 2 -> 3 -> 5 -> 7 -> 11 -> 13 -> 17 -> 19 -> 23 -> 29 -> ...
 
 Concatenation: the -> quick -> brown -> 0 -> 1 -> 2 -> 3 -> 5
 Interleave:    the -> 0 -> 2 -> quick -> 1 -> 3 -> brown -> 5

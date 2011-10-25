@@ -117,7 +117,8 @@ class Seq
     if firsts.dropUntil defined
       seq.build firsts, => @map(option(seq.rest)).zipSeq()
 
-  sequentializeWith: (args...) -> seq.build this, -> seq(args).map(seq) if args
+  sequentializeWith: (args...) ->
+    seq.build this, -> seq(args).map(option seq) if args
 
   zip: (others...) -> @sequentializeWith(others...).zipSeq()
 
@@ -139,7 +140,10 @@ class Seq
     seq.build @first(), => if @rest() then @rest().lazyConcat s else s()
 
   flatten: ->
-    if @rest() then @first().lazyConcat => @rest().flatten() else @first()
+    if @rest()
+      @first().lazyConcat => @rest().dropUntil(defined)?.flatten()
+    else
+      @first()
 
   flatMap: (fun) -> @map(fun).flatten()
 
@@ -178,6 +182,12 @@ class Seq
   subseqs: -> seq.build this, => @rest()?.subseqs()
 
   consec: (n) -> @subseqs().map rcurry seq.take, n
+
+  sort: ->
+    x = @first()
+    head = @rest()?.select((y) -> y <= x)?.sort()
+    tail = seq.build x, => @rest()?.select((y) -> y > x)?.sort()
+    if head then head.concat tail else tail
 
 
 seq = (source) ->
@@ -222,12 +232,13 @@ seq.treeWalk = (root, nextLevel) ->
 
 
 for k, v of Seq.prototype
-  do ->
+  unless k == 'toString' then do ->
     key = k
     seq[key] = (s, args...) -> Seq::[key].apply(s, args)
 
 
-(exports &= this.lazyseq &= {}).seq = seq
+exports ?= this.lazyseq ?= {}
+exports.seq = seq
 
 
 if module? and not module.parent
@@ -252,6 +263,7 @@ if module? and not module.parent
   print "Reverse:       #{s.reverse()}"
   print "Min and max:   #{s.min()}, #{s.max()}"
   print "With indexes:  #{s.zip('abcdefg').map(array).drop(3)}"
+  print "Sorted:        #{s.sort()}"
   print ""
   print "Number range:  #{seq.range(10, 20).toString(11)}"
   print "Its sum:       #{seq.range(10, 20).sum()}"
