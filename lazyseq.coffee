@@ -189,11 +189,11 @@ seq.build = (args...) ->
     seq args
 
 seq.fromArray = (a, i = 0) ->
-  if i < a.length then seq.build a[i], => seq.fromArray a, i+1
+  if i < a.length then seq.build a[i], -> seq.fromArray a, i+1
 
-seq.upFrom = (start) -> seq.build start, => seq.upFrom start + 1
+seq.upFrom = (start) -> seq.build start, -> seq.upFrom start + 1
 
-seq.downFrom = (start) -> seq.build start, => seq.downFrom start - 1
+seq.downFrom = (start) -> seq.build start, -> seq.downFrom start - 1
 
 seq.range = (start, limit) ->
   if limit >= start
@@ -201,12 +201,12 @@ seq.range = (start, limit) ->
   else
     seq.downFrom(start).takeWhile (x) -> x >= limit
 
-seq.constant = (val) -> seq.build val, => seq.constant val
+seq.constant = (val) -> seq.build val, -> seq.constant val
 
-seq.iterate = (x, f) -> seq.build x, => seq.iterate f(x), f
+seq.iterate = (x, f) -> seq.build x, -> seq.iterate f(x), f
 
 seq.treeWalk = (root, nextLevel) ->
-  seq.build root, => nextLevel(root)?.flatMap (s) => seq.treeWalk s, nextLevel
+  seq.build root, -> nextLevel(root)?.flatMap (s) -> seq.treeWalk s, nextLevel
 
 
 for k, v of Seq.prototype
