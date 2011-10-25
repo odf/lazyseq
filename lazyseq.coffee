@@ -167,7 +167,7 @@ class Seq
 
   subseqs: -> seq.build this, => @rest()?.subseqs()
 
-  consec: (n) -> @subseqs().map (s) -> s.take(n).toArray()
+  consec: (n) -> @subseqs().map rcurry seq.take, n
 
 
 seq = (source) ->
@@ -230,7 +230,7 @@ if module? and not module.parent
     if sub.rest() then sub.first() else sub.first().toUpperCase()
   print "Size:          #{s.size()}"
   print "Last:          #{s.last()}"
-  print "Runs of 3:     #{s.consec(3).drop(3)}"
+  print "Runs of 3:     #{s.consec(3).map(seq.toArray).drop(3)}"
   print "Letter counts: #{s.map((w) -> [w, w.length]).take(4)}"
   print "Repeat third:  #{seq.constant(s.pick 2).take(5)}"
   print "Cycle:         #{s.cycle().take(8)}"

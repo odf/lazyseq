@@ -320,7 +320,7 @@ class Seq:
         return Seq(self, lambda : self.rest() and self.rest().subseqs())
 
     def consec(self, n):
-        return self.subseqs().map(compose(list, rcurry(Seq.take, n)))
+        return self.subseqs().map(rcurry(Seq.take, n))
 
     @classmethod
     def tree_walk(cls, root, next_level):
@@ -340,7 +340,7 @@ if __name__ == "__main__":
         lambda sub: sub.first() if sub.rest() else sub.first().upper())
     print "Size:         ", s.size()
     print "Last:         ", s.last()
-    print "Runs of 3:    ", s.consec(3).drop(3)
+    print "Runs of 3:    ", s.consec(3).map(list).drop(3)
     print "Letter counts:", dict(s.map(lambda w: (w, len(w))).take(4))
     print "Repeat third: ", Seq.constant(s.pick(2)).take(5)
     print "Cycle:        ", s.cycle().take(8)

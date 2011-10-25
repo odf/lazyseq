@@ -344,7 +344,7 @@ class Seq
   end
 
   def consec(n)
-    subseqs.map { |s| s.take(n).to_a }
+    subseqs.map { |s| s.take n }
   end
 
   def self.tree_walk(root, next_level)
@@ -364,7 +364,7 @@ if __FILE__ == $0
     seq.subseqs.map { |sub| sub.rest ? sub.first : sub.first.upcase }.to_s
   puts "Size:          #{seq.size}"
   puts "Last:          #{seq.last}"
-  puts "Runs of 3:     #{seq.consec(3).drop(3)}"
+  puts "Runs of 3:     #{seq.consec(3).map(&:to_a).drop(3)}"
   puts "Letter counts: #{seq.map { |w| [w, w.length] }.take(4).to_hash}"
   puts "Repeat third:  #{Seq.constant(seq.pick(2)).take 5}"
   puts "Cycle:         #{seq.cycle.take 8}"
