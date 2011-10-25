@@ -24,13 +24,18 @@ class Seq
 
   toSeq: -> this
 
-  toArray: ->
-    a = []
-    step = (s) -> if s then a.push s.first(); -> step s.rest()
-    bounce step this
-    a
+  into: (target) ->
+    if not target?
+      this
+    else if typeof target.plus == 'function'
+      @reduce target, (t, item) -> t.plus item
+    else
+      out = (x for x in target)
+      step = (s) -> if s then out.push s.first(); -> step s.rest()
+      bounce step this
+      out
 
-  toString: -> @toArray().join ' -> '
+  toString: -> @into([]).join ' -> '
 
   size: ->
     step = (s, n) -> if s then -> step s.rest(), n + 1 else n
@@ -222,6 +227,7 @@ for k, v of Seq.prototype
 
 if module? and not module.parent
   print = console.log
+  array = rcurry seq.into, []
 
   s = seq "the quick brown fox jumps over".split(/\s+/)
   print "Sequence:      #{s}"
@@ -230,7 +236,7 @@ if module? and not module.parent
     if sub.rest() then sub.first() else sub.first().toUpperCase()
   print "Size:          #{s.size()}"
   print "Last:          #{s.last()}"
-  print "Runs of 3:     #{s.consec(3).map(seq.toArray).drop(3)}"
+  print "Runs of 3:     #{s.consec(3).map(array).drop(3)}"
   print "Letter counts: #{s.map((w) -> [w, w.length]).take(4)}"
   print "Repeat third:  #{seq.constant(s.pick 2).take(5)}"
   print "Cycle:         #{s.cycle().take(8)}"
@@ -240,7 +246,7 @@ if module? and not module.parent
   print "All 3 letters: #{s.forall (x) -> x.length == 3}"
   print "Reverse:       #{s.reverse()}"
   print "Min and max:   #{s.min()}, #{s.max()}"
-  print "With indexes:  #{s.zip('abcdefg').map(seq.toArray).drop(3)}"
+  print "With indexes:  #{s.zip('abcdefg').map(array).drop(3)}"
   print ""
   print "Number range:  #{seq.range 10, 20}"
   print "Its sum:       #{seq.range(10, 20).sum()}"
@@ -268,10 +274,8 @@ if module? and not module.parent
   print ""
   print "Concatenation: #{s.take(3).concat fib.take(2), primes.take(3)}"
   print "Interleave:    #{s.take(3).interleave fib.take(2), primes.take(3)}"
-  print "Cartesian:     " +
-    fib.take(2).cartesian(primes.take(2), [0]).map(seq.toArray)
-  print "Cantor:        " +
-    primes.cantor(primes, primes).take(5).map(seq.toArray)
+  print "Cartesian:     #{fib.take(2).cartesian(primes.take(2), [0]).map(array)}"
+  print "Cantor:        #{primes.cantor(primes, primes).take(5).map(array)}"
   print "Distinct:      #{fib.interleave(primes).distinct().take(10)}"
   print ""
 
